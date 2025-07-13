@@ -1,0 +1,15 @@
+langchain_openai
+langchain_anthropic
+langchain_google_genai
+pydantic
+langgraph
+langchain
+fastapi
+openai-whisper
+uvicorn
+websockets
+torch
+pyttsx3
+gtts
+python-dotenv
+ipython

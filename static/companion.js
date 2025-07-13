@@ -1,0 +1,811 @@
+    /**
+         * AI Voice Assistant Frontend
+         * --------------------------
+         * This script handles the frontend functionality of the AI Voice Assistant,
+         * including audio visualization, speech recognition, and UI management.
+         * 
+         * Key Features:
+         * - Real-time audio visualization using Canvas
+         * - Web Speech API integration
+         * - Debug logging system
+         */
+
+        // Core variables
+        let canvas;
+        let ctx;
+        let audioContext;
+        let analyser;
+        let dataArray;
+        let animationId;
+        let particles = {};
+        let hue = 220;
+        let recognition;
+        let isListening = false;
+        let sessionId = null;
+        let isSpeaking = false;
+        let currentSpeaker = 'none';
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let activeAgents = {};
+        let responseQueue = [];
+        let isProcessingResponse = false;
+        let audioQueue = [];
+        let currentAudio = null;
+        let isStreaming = false;
+        let ws = null;
+        let clientId = null;
+        let agentStatus = {};
+        let isRecognitionRunning = false;
+        
+        // Constants
+        const statusDiv = document.querySelector('.status');
+        const transcriptDiv = document.querySelector('.transcript');
+        const SERVER_URL = 'http://localhost:7777';
+        const debugPanel = document.querySelector('.debug-panel');
+        const debugContent = document.querySelector('.debug-content');
+        const debugToggle = document.querySelector('.debug-toggle');
+        let isDebugVisible = false;
+
+        // Agent colors and positions
+        const AGENT_CONFIGS = {
+            'assistant': {
+                color: { hue: 220, saturation: 80, brightness: 60 },
+                position: 0.3
+            }
+        };
+
+        // Add theme toggle functionality
+        let currentTheme = localStorage.getItem('theme') || 'light';
+        document.body.setAttribute('data-theme', currentTheme);
+        updateThemeIcon(currentTheme);
+
+        window.toggleTheme = function() {
+            currentTheme = currentTheme === 'light' ? 'dark' : 'light';
+            document.body.setAttribute('data-theme', currentTheme);
+            localStorage.setItem('theme', currentTheme);
+            updateThemeIcon(currentTheme);
+            log(`Theme switched to ${currentTheme} mode`);
+        };
+
+        function updateThemeIcon(theme) {
+            const icon = document.getElementById('theme-icon');
+            if (theme === 'dark') {
+                icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />';
+            } else {
+                icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />';
+            }
+        }
+
+        /**
+         * Logging system for debugging and development
+         */
+        function log(message, level = 'info') {
+            const entry = document.createElement('div');
+            entry.className = `debug-entry ${level}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            debugContent.appendChild(entry);
+            debugContent.scrollTop = debugContent.scrollHeight;
+            console.log(`[${level.toUpperCase()}] ${message}`);
+        }
+
+        debugToggle.addEventListener('click', () => {
+            isDebugVisible = !isDebugVisible;
+            debugPanel.classList.toggle('visible');
+            debugToggle.textContent = isDebugVisible ? 'Hide Debug' : 'Show Debug';
+        });
+
+        function getCloudColors(cloudIndex, theme) {
+            if (theme === 'dark') {
+                return cloudIndex === 0 ? 
+                    { hue: 230, saturation: 84, brightness: 90 } : 
+                    { hue: 170, saturation: 84, brightness: 90 };
+            }
+            return cloudIndex === 0 ? 
+                { hue: 230, saturation: 70, brightness: 60 } : 
+                { hue: 170, saturation: 70, brightness: 60 };
+        }
+
+        class Particle {
+            constructor(x, y, baseRadius, agentId) {
+                this.x = x;
+                this.y = y;
+                this.baseRadius = baseRadius;
+                this.radius = baseRadius;
+                this.angle = Math.random() * Math.PI * 2;
+                this.velocity = 0.005 + Math.random() * 0.01;
+                this.distance = 60 + Math.random() * 120;
+                this.originalX = x;
+                this.originalY = y;
+                this.agentId = agentId;
+                this.alpha = 0.4 + Math.random() * 0.3;
+                this.updateColors();
+            }
+
+            updateColors() {
+                const colors = AGENT_CONFIGS[this.agentId].color;
+                this.hue = colors.hue + Math.random() * 30;
+                this.saturation = colors.saturation + Math.random() * 30;
+                this.brightness = colors.brightness + Math.random() * 20;
+            }
+
+            update(intensity) {
+                // Pre-calculate common values
+                const angleIncrement = this.velocity * (1 + intensity * 0.8);
+                const distanceMultiplier = 0.5 + intensity * 0.5;
+                const radiusMultiplier = 1 + intensity * 1.5;
+                
+                this.angle += angleIncrement;
+                this.x = this.originalX + Math.cos(this.angle) * this.distance * distanceMultiplier;
+                this.y = this.originalY + Math.sin(this.angle) * this.distance * distanceMultiplier;
+                this.radius = this.baseRadius * radiusMultiplier;
+                this.alpha = 0.4 + intensity * 0.3;
+                
+                // Only update colors if intensity changes significantly
+                if (Math.abs(this.lastIntensity - intensity) > 0.1) {
+                this.updateColors();
+                    this.lastIntensity = intensity;
+                }
+            }
+
+            draw(ctx) {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = `hsla(${this.hue}, ${this.saturation}%, ${this.brightness}%, ${this.alpha})`;
+                ctx.fill();
+            }
+        }
+
+        function initParticles() {
+            particles = {};
+            const numParticles = 50;
+            
+            // Create particles for each agent
+            for (const [agentId, config] of Object.entries(AGENT_CONFIGS)) {
+                particles[agentId] = [];
+            for (let i = 0; i < numParticles; i++) {
+                    particles[agentId].push(new Particle(
+                        canvas.width * config.position,
+                    canvas.height / 2,
+                    3 + Math.random() * 2,
+                        agentId
+                    ));
+                }
+            }
+        }
+
+        function initCanvas() {
+            canvas = document.getElementById('visualizer');
+            if (!canvas) {
+                console.error('Canvas element not found');
+                return false;
+            }
+            ctx = canvas.getContext('2d');
+            if (!ctx) {
+                console.error('Could not get canvas context');
+                return false;
+            }
+            return true;
+        }
+
+        function resizeCanvas() {
+            if (!canvas || !ctx) return;
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            initParticles();
+        }
+
+        async function initAudio() {
+            try {
+                // Initialize canvas first
+                if (!initCanvas()) {
+                    throw new Error('Failed to initialize canvas');
+                }
+                
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                audioContext = new AudioContext();
+                const source = audioContext.createMediaStreamSource(stream);
+                analyser = audioContext.createAnalyser();
+                analyser.fftSize = 512;
+                source.connect(analyser);
+                dataArray = new Uint8Array(analyser.frequencyBinCount);
+                draw();
+                log('Audio context initialized successfully');
+                return stream;  // Return the stream for use in speech recognition
+            } catch (err) {
+                console.error('Error accessing microphone:', err);
+                dataArray = new Uint8Array(256).fill(128);
+                if (ctx) draw();
+                log('Error initializing audio: ' + err.message, 'error');
+                throw err;  // Re-throw to handle in the calling function
+            }
+        }
+
+        function getAudioIntensity() {
+            if (!analyser) return 0.2;
+            
+            analyser.getByteTimeDomainData(dataArray);
+            let sum = 0;
+            for (let i = 0; i < dataArray.length; i++) {
+                const value = (dataArray[i] - 128) / 128;
+                sum += value * value;
+            }
+            
+            return Math.min(1, Math.sqrt(sum / dataArray.length) * 5);
+        }
+
+        function drawConnection(p1, p2, intensity) {
+            // Only draw connections between particles in the same cloud
+            if (p1.agentId !== p2.agentId) return;
+            
+            const distance = Math.hypot(p1.x - p2.x, p1.y - p2.y);
+            if (distance < 100) {
+                ctx.beginPath();
+                ctx.moveTo(p1.x, p1.y);
+                ctx.lineTo(p2.x, p2.y);
+                const alpha = (1 - distance / 100) * 0.15 * intensity;
+                ctx.strokeStyle = `hsla(${hue}, 80%, 50%, ${alpha})`;
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            }
+        }
+
+        function draw() {
+            // Check if canvas and context are available
+            if (!canvas || !ctx) {
+                animationId = requestAnimationFrame(draw);
+                return;
+            }
+            
+            // Use performance.now() to measure frame time
+            const startTime = performance.now();
+            
+            animationId = requestAnimationFrame(draw);
+            
+            const baseIntensity = getAudioIntensity();
+            ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--canvas-fade');
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Update and draw particles for each agent
+            for (const [agentId, agentParticles] of Object.entries(particles)) {
+                // Calculate agent-specific intensity
+                const agentIntensity = activeAgents[agentId] ? baseIntensity : 0.2;
+                
+                // Optimize particle updates by reducing unnecessary calculations
+                const centerX = canvas.width * AGENT_CONFIGS[agentId].position;
+                const centerY = canvas.height / 2;
+                const centerColor = AGENT_CONFIGS[agentId].color;
+                
+                // Batch particle updates
+                for (let i = 0; i < agentParticles.length; i++) {
+                    const particle = agentParticles[i];
+                    particle.update(agentIntensity);
+                particle.draw(ctx);
+                    
+                    // Draw connections only for nearby particles
+                    for (let j = i + 1; j < agentParticles.length; j++) {
+                        const otherParticle = agentParticles[j];
+                        const dx = particle.x - otherParticle.x;
+                        const dy = particle.y - otherParticle.y;
+                        const distance = dx * dx + dy * dy; // Squared distance for comparison
+                        
+                        if (distance < 10000) { // 100^2 = 10000
+                            ctx.beginPath();
+                            ctx.moveTo(particle.x, particle.y);
+                            ctx.lineTo(otherParticle.x, otherParticle.y);
+                            const alpha = (1 - Math.sqrt(distance) / 100) * 0.15 * agentIntensity;
+                            ctx.strokeStyle = `hsla(${hue}, 80%, 50%, ${alpha})`;
+                            ctx.lineWidth = 1;
+                            ctx.stroke();
+                        }
+                    }
+                }
+
+                // Draw central glow for each agent
+                const gradient = ctx.createRadialGradient(
+                    centerX, centerY, 0,
+                    centerX, centerY, 200
+                );
+                
+                const alpha = Math.max(0, Math.min(1, 0.15 * agentIntensity));
+                gradient.addColorStop(0, `hsla(${centerColor.hue}, ${centerColor.saturation}%, ${centerColor.brightness}%, ${alpha})`);
+                gradient.addColorStop(1, 'transparent');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+
+            // Log performance warning if frame takes too long
+            //const frameTime = performance.now() - startTime;
+            //if (frameTime > 16) { // 16ms = ~60fps
+            //    console.warn(`Frame took ${frameTime.toFixed(2)}ms to render`);
+            //}
+        }
+
+        async function checkSystemRequirements() {
+            log('Checking system requirements...');
+            
+            try {
+                // Check for required APIs
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    log('MediaDevices API not available', 'error');
+                    return false;
+                }
+                log('MediaDevices API available');
+
+                if (!window.SpeechRecognition && !window.webkitSpeechRecognition) {
+                    log('Speech Recognition API not available', 'error');
+                    return false;
+                }
+                log('Speech Recognition API available');
+
+                if (!window.speechSynthesis) {
+                    log('Speech Synthesis API not available', 'error');
+                    return false;
+                }
+                log('Speech Synthesis API available');
+
+                return true;
+            } catch (error) {
+                log(`Error checking system requirements: ${error.message}`, 'error');
+                return false;
+            }
+        }
+
+        function copyDebugLog() {
+            const debugText = Array.from(debugContent.children)
+                .map(entry => entry.textContent)
+                .join('\n');
+            navigator.clipboard.writeText(debugText)
+                .then(() => {
+                    const copyBtn = document.querySelector('.copy-button');
+                    copyBtn.textContent = 'Copied!';
+                    setTimeout(() => {
+                        copyBtn.textContent = 'Copy Log';
+                    }, 2000);
+                })
+                .catch(err => log('Failed to copy debug log: ' + err.message, 'error'));
+        }
+
+        // Make copyDebugLog available globally
+        window.copyDebugLog = copyDebugLog;
+
+        async function testBackendConnection() {
+            try {
+                log('Testing backend connection...');
+                const response = await fetch(`${SERVER_URL}/test`, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error || `Backend responded with status ${response.status}`);
+                }
+                
+                const data = await response.json();
+                if (data.status !== 'ok') {
+                    throw new Error('Unexpected response from server');
+                }
+                
+                log('Backend connection successful');
+                return true;
+            } catch (error) {
+                log(`Backend connection failed: ${error.message}`, 'error');
+                return false;
+            }
+        }
+
+        // Configure audio settings for better voice isolation
+        async function setupAudioContext() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        echoCancellation: true,      // Enable echo cancellation
+                        noiseSuppression: true,      // Enable noise suppression
+                        autoGainControl: true,       // Enable automatic gain control
+                        channelCount: 1,             // Mono audio for better processing
+                        sampleRate: 16000           // Standard sample rate for speech
+                    }
+                });
+                log('Audio stream obtained successfully');
+                return stream;
+            } catch (error) {
+                log(`Error setting up audio: ${error.message}`, 'error');
+                throw error;
+            }
+        }
+
+        // Add this new function for streaming audio playback
+        async function playStreamingAudio(audioChunks) {
+            if (audioChunks.length === 0) return;
+            
+            const audioBlob = new Blob(audioChunks, { type: 'audio/mp3' });
+            const audioUrl = URL.createObjectURL(audioBlob);
+            const audio = new Audio(audioUrl);
+
+            log(`Playing audio: ${audioUrl}`);
+            
+            audio.onended = () => {
+                URL.revokeObjectURL(audioUrl);
+                if (audioQueue.length > 0) {
+                    const nextChunk = audioQueue.shift();
+                    playStreamingAudio(nextChunk);
+                    } else {
+                    isStreaming = false;
+                    if (responseQueue.length > 0) {
+                        setTimeout(() => processResponseQueue(), 500);
+                    } else {
+                        currentSpeaker = 'user';
+                        statusDiv.textContent = "Listening...";
+                        isSpeaking = false;
+                        
+                        // Restart recognition immediately
+                        if (!isRecognitionRunning) {
+                            try {
+                                recognition.start();
+                                log('Restarted recognition after all AI responses');
+                            } catch (error) {
+                                log(`Failed to restart recognition after audio: ${error}`, 'error');
+                            }
+                        }
+                    }
+                }
+            };
+
+            audio.onerror = (error) => {
+                log(`Audio playback error: ${error}`, 'error');
+                URL.revokeObjectURL(audioUrl);
+                if (audioQueue.length > 0) {
+                    const nextChunk = audioQueue.shift();
+                    playStreamingAudio(nextChunk);
+                }
+            };
+
+            try {
+                await audio.play();
+            } catch (error) {
+                log(`Failed to play audio: ${error}`, 'error');
+                if (audioQueue.length > 0) {
+                    const nextChunk = audioQueue.shift();
+                    playStreamingAudio(nextChunk);
+                }
+            }
+        }
+
+        // Update the processResponseQueue function
+        async function processResponseQueue() {
+            if (isProcessingResponse || responseQueue.length === 0) return;
+            
+            isProcessingResponse = true;
+            const { agentId, agentResponse } = responseQueue.shift();
+            
+            log(`Processing response from ${agentId}: ${agentResponse}`);
+            
+            try {
+                if (agentResponse.error) {
+                    log(`Error from ${agentResponse.name}: ${agentResponse.error}`, 'error');
+                    return;
+                }
+
+                log(`${agentResponse.name}: ${agentResponse.response}`);
+                
+                if (agentResponse.audio) {
+                    currentSpeaker = agentId;
+                    isSpeaking = true;
+                    statusDiv.textContent = `${agentResponse.name} is speaking...`;
+                    
+                    // Update UI immediately
+                    document.getElementById('listeningIndicator').classList.remove('active');
+
+                    // Activate the agent's particles while speaking
+                    activeAgents[agentId] = true;
+
+                    // Convert base64 string to audio buffer and add to queue
+                    const audioData = atob(agentResponse.audio);
+                    const audioBuffer = new Uint8Array(audioData.length);
+                    for (let i = 0; i < audioData.length; i++) {
+                        audioBuffer[i] = audioData.charCodeAt(i);
+                    }
+                    audioQueue.push([audioBuffer]);
+
+                    // Start playing if not already streaming
+                    if (!isStreaming) {
+                        isStreaming = true;
+                        const firstChunk = audioQueue.shift();
+                        playStreamingAudio(firstChunk);
+                    }
+                }
+            } catch (error) {
+                activeAgents[agentId] = false;
+                log(`Error processing response: ${error}`, 'error');
+                isSpeaking = false;
+                statusDiv.textContent = "Listening...";
+                
+                if (responseQueue.length > 0) {
+                    processResponseQueue();
+                } else {
+                    currentSpeaker = 'user';
+                    if (!isRecognitionRunning) {
+                        try {
+                            recognition.start();
+                        } catch (error) {
+                            log(`Failed to restart recognition: ${error}`, 'error');
+                        }
+                    }
+                }
+            } finally {
+                isProcessingResponse = false;
+            }
+        }
+
+        // Add this function to handle agent responses
+        function handleAgentResponse(data) {
+            // Debug: Log the raw data
+            //log(`Raw response data: ${JSON.stringify(data)}`);
+            
+            // Ensure data is properly structured
+            if (!data || typeof data !== 'object') {
+                log('Invalid response data received', 'error');
+                return;
+            }
+
+            const { companion, response, status, audio } = data;
+            
+            // Debug: Log the extracted values
+            /*
+            log(`Extracted companion: "${companion}" (type: ${typeof companion})`);
+            log(`Extracted response: "${response}" (type: ${typeof response})`);
+            log(`Extracted status: "${status}" (type: ${typeof status})`);
+            log(`Extracted audio: ${audio ? 'present' : 'missing'} (type: ${typeof audio})`);
+            */
+            
+            if (status === 'error') {
+                log(`Error from ${companion || 'unknown agent'}: ${response}`, 'error');
+                return;
+            }
+
+            if (!companion) {
+                log('Received response without agent name', 'error');
+                log(`Companion value: "${companion}" (falsy check failed)`);
+                return;
+            }
+
+            if (!response) {
+                log(`Empty response from ${companion}`, 'error');
+                return;
+            }
+
+            log(`Received response from ${companion}: ${response}`);
+
+            // Add response to queue
+            responseQueue.push({
+                agentId: companion,
+                agentResponse: {
+                    name: companion,
+                    response: response,
+                    audio: audio || null
+                }
+            });
+
+            // Process the queue if not already processing
+            if (!isProcessingResponse) {
+                processResponseQueue();
+            }
+        }
+
+        // Update the WebSocket initialization
+        async function initWebSocket() {
+            clientId = uuidv4();
+            ws = new WebSocket(`ws://localhost:7777/ws/${clientId}`);
+            
+            ws.onopen = () => {
+                log('WebSocket connection established');
+                updateAgentStatus();
+            };
+            
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    handleAgentResponse(data);
+                } catch (error) {
+                    log(`Error parsing WebSocket message: ${error}`, 'error');
+                }
+            };
+            
+            ws.onerror = (error) => {
+                log(`WebSocket error: ${error}`, 'error');
+            };
+            
+            ws.onclose = () => {
+                log('WebSocket connection closed');
+                setTimeout(initWebSocket, 5000); // Reconnect after 5 seconds
+            };
+        }
+
+        // Add this function to update agent status
+        async function updateAgentStatus() {
+            try {
+                const response = await fetch(`${SERVER_URL}/companions`);
+                companionStatus = await response.json();
+                log('Companion status updated');
+                
+                // Update UI with agent information
+                updateCompanionUI();
+            } catch (error) {
+                log(`Error updating companion status: ${error}`, 'error');
+            }
+        }
+
+        // Add this function to update the UI with agent information
+        function updateCompanionUI() {
+            const companionContainer = document.createElement('div');
+            companionContainer.className = 'companion-container';
+            companionContainer.style.cssText = `
+                position: fixed;
+                right: 30px;
+                top: 30px;
+                background: var(--surface-primary);
+                padding: 20px;
+                border-radius: 16px;
+                box-shadow: 0 8px 16px var(--shadow-color);
+                z-index: 3;
+                backdrop-filter: blur(10px);
+                border: 1px solid var(--border-color);
+            `;
+
+            for (const [name, status] of Object.entries(companionStatus)) {
+                const companionDiv = document.createElement('div');
+                companionDiv.className = 'companion-info';
+                companionDiv.innerHTML = `
+                    <h3>${name}</h3>
+                    <p>Role: ${status.role}</p>
+                    <p>Provider: ${status.provider}</p>
+                    <p>Model: ${status.model}</p>
+                    <p>Tools: ${status.tools.join(', ')}</p>
+                `;
+                companionContainer.appendChild(companionDiv);
+            }
+
+            // Remove existing agent container if it exists
+            const existingContainer = document.querySelector('.companion-container');
+            if (existingContainer) {
+                existingContainer.remove();
+            }
+
+            document.body.appendChild(companionContainer);
+        }
+
+        // Update the initVoiceChat function to initialize WebSocket
+        async function initVoiceChat() {
+            try {
+                log('Initializing voice chat...');
+                
+                if (!await checkSystemRequirements()) {
+                    throw new Error('System requirements not met');
+                }
+
+                // Initialize WebSocket connection
+                await initWebSocket();
+
+                // Initialize audio
+                log('Initializing audio...');
+                const audioStream = await initAudio();
+                
+                // Initialize speech recognition
+                log('Setting up speech recognition...');
+                recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+                recognition.lang = 'en-US';
+                recognition.continuous = true;
+                recognition.interimResults = false;
+                recognition.maxAlternatives = 1;
+
+                // Set up event handlers
+                recognition.onstart = () => {
+                    isRecognitionRunning = true;
+                    document.getElementById('listeningIndicator').classList.add('active');
+                    log('Recognition started - listening for speech');
+                    statusDiv.textContent = "Listening...";
+                    currentSpeaker = 'user';
+                };
+
+                recognition.onend = () => {
+                    isRecognitionRunning = false;
+                    document.getElementById('listeningIndicator').classList.remove('active');
+                    if (!isSpeaking && currentSpeaker === 'user' && !isRecognitionRunning) {
+                        log('Recognition ended, restarting...');
+                        try {
+                            recognition.start();
+                        } catch (error) {
+                            log(`Failed to restart recognition: ${error}`, 'error');
+                        }
+                    }
+                };
+
+                recognition.onerror = (event) => {
+                    log(`Speech recognition error: ${event.error}`, 'error');
+                    statusDiv.textContent = "Error: " + event.error;
+                    if (event.error !== 'no-speech') {
+                    setTimeout(() => {
+                        if (!isRecognitionRunning) {
+                            try {
+                                recognition.start();
+                                log('Restarted speech recognition after error');
+                            } catch (error) {
+                                log(`Failed to restart recognition after error: ${error}`, 'error');
+                            }
+                        }
+                    }, 1000);
+                    }
+                };
+
+
+                // Start recognition
+                        recognition.start();
+                log('Speech recognition started');
+
+                // Set up media recorder
+                mediaRecorder = new MediaRecorder(audioStream);
+
+
+                // Update the recognition.onresult handler to use WebSocket
+                recognition.onresult = async (event) => {
+                    const transcript = event.results[0][0].transcript;
+                    log(`User said: ${transcript}`);
+                    transcriptDiv.style.display = 'block';
+                    transcriptDiv.textContent = "You: " + transcript;
+
+                    try {
+                        // Send message to the first companion (for now)
+                        const companionNames = Object.keys(companionStatus);
+                        if (companionNames.length > 0) {
+                            ws.send(JSON.stringify({
+                                companion_name: companionNames[0],
+                                content: transcript,
+                                broadcast: false
+                            }));
+                        }
+                    } catch (error) {
+                        log(`Error sending message: ${error}`, 'error');
+                        statusDiv.textContent = "Error: " + error.message;
+                    }
+                };
+                
+                statusDiv.textContent = "Voice chat ready!";
+                log('Voice chat initialization complete');
+
+                document.querySelector('.config-panel').style.display = 'none';
+            } catch (error) {
+                log(`Error initializing voice chat: ${error.message}`, 'error');
+                statusDiv.textContent = "Error initializing voice chat";
+                alert(`Failed to initialize voice chat: ${error.message}\n\nPlease make sure you are accessing the page through http://localhost:7777`);
+            }
+        }
+
+        // Add UUID generation function
+        function uuidv4() {
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                const r = Math.random() * 16 | 0;
+                const v = c === 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        }
+
+        /**
+         * Initialize the application when the page loads
+         */
+        window.addEventListener('load', () => {
+            log('Application starting...');
+            
+            // Initialize canvas first
+            if (initCanvas()) {
+                resizeCanvas();
+                window.addEventListener('resize', resizeCanvas);
+            }
+            
+            initAudio().catch(error => {
+                log(`Error initializing audio: ${error.message}`, 'error');
+            });
+            // Auto-start voice chat
+            initVoiceChat();
+        });

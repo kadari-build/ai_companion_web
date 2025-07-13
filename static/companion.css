@@ -1,0 +1,325 @@
+/* 
+Styles are organized into sections:
+1. Core layout and positioning
+2. UI components (panels, buttons, inputs)
+3. Task list styling
+4. Debug panel styling
+*/
+    /* Theme Variables */
+    :root {
+        /* Light theme colors */
+        --bg-gradient-start: #f6f8ff;
+        --bg-gradient-end: #ffffff;
+        --text-primary: #1e293b;
+        --text-secondary: rgba(70, 70, 100, 0.8);
+        --surface-primary: rgba(255, 255, 255, 0.95);
+        --surface-secondary: rgba(255, 255, 255, 0.9);
+        --accent-primary: #4f46e5;
+        --accent-secondary: #4338ca;
+        --border-color: rgba(0, 0, 0, 0.08);
+        --shadow-color: rgba(0, 0, 0, 0.08);
+        --debug-info-bg: #f0f7ff;
+        --debug-info-color: #1e40af;
+        --debug-error-bg: #fef2f2;
+        --debug-error-color: #991b1b;
+        --canvas-fade: rgba(255, 255, 255, 0.2);
+    }
+
+    /* Dark theme colors */
+    [data-theme="dark"] {
+        --bg-gradient-start: #0f172a;
+        --bg-gradient-end: #1e293b;
+        --text-primary: #f1f5f9;
+        --text-secondary: rgba(241, 245, 249, 0.8);
+        --surface-primary: rgba(30, 41, 59, 0.95);
+        --surface-secondary: rgba(30, 41, 59, 0.9);
+        --accent-primary: #818cf8;
+        --accent-secondary: #6366f1;
+        --border-color: rgba(255, 255, 255, 0.08);
+        --shadow-color: rgba(0, 0, 0, 0.3);
+        --debug-info-bg: #1e3a8a;
+        --debug-info-color: #bfdbfe;
+        --debug-error-bg: #7f1d1d;
+        --debug-error-color: #fecaca;
+        --canvas-fade: rgba(15, 23, 42, 0.2);
+    }
+
+    /* Core layout */
+    body {
+        margin: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
+        overflow: hidden;
+        position: relative;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        color: var(--text-primary);
+        transition: all 0.3s ease;
+    }
+    canvas {
+        position: absolute;
+        z-index: 1;
+        filter: blur(1px);
+    }
+
+    /* Modern UI Components */
+    .hint-text {
+        position: absolute;
+        bottom: 30px;
+        color: var(--text-secondary);
+        font-size: 15px;
+        text-align: center;
+        z-index: 2;
+        font-weight: 500;
+        letter-spacing: 0.3px;
+        background: var(--surface-secondary);
+        padding: 12px 24px;
+        border-radius: 20px;
+        box-shadow: 0 4px 6px var(--shadow-color);
+        backdrop-filter: blur(10px);
+        transform: translateY(0);
+        transition: all 0.3s ease;
+    }
+    .hint-text:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 8px var(--shadow-color);
+    }
+    .config-panel {
+        position: fixed;
+        top: 30px;
+        left: 30px;
+        background: var(--surface-primary);
+        padding: 24px;
+        border-radius: 16px;
+        box-shadow: 0 8px 16px var(--shadow-color);
+        z-index: 3;
+        backdrop-filter: blur(10px);
+        border: 1px solid var(--border-color);
+        transition: all 0.3s ease;
+    }
+    .config-panel:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 20px var(--shadow-color);
+    }
+    .config-panel button {
+        background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 15px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 6px rgba(79, 70, 229, 0.2);
+    }
+    .config-panel button:hover {
+        background: linear-gradient(135deg, var(--accent-secondary) 0%, var(--accent-primary) 100%);
+        transform: translateY(-1px);
+        box-shadow: 0 6px 8px rgba(79, 70, 229, 0.3);
+    }
+
+    /* Status and Transcript */
+    .status, .transcript {
+        position: fixed;
+        left: 50%;
+        transform: translateX(-50%);
+        background: var(--surface-primary);
+        padding: 16px 32px;
+        border-radius: 16px;
+        box-shadow: 0 8px 16px var(--shadow-color);
+        z-index: 4;
+        backdrop-filter: blur(10px);
+        font-weight: 500;
+        border: 1px solid var(--border-color);
+        transition: all 0.3s ease;
+        min-width: 200px;
+        text-align: center;
+        color: var(--accent-primary);
+    }
+    .status {
+        top: 30px;
+        font-size: 15px;
+    }
+    .transcript {
+        bottom: 90px;
+        display: none;
+        color: var(--text-primary);
+        font-size: 16px;
+        line-height: 1.5;
+        max-width: 600px;
+        width: 80%;
+    }
+    .status:hover, .transcript:hover {
+        transform: translateX(-50%) translateY(-2px);
+        box-shadow: 0 12px 20px var(--shadow-color);
+    }
+
+    /* Debug Panel */
+    .debug-toggle {
+        position: fixed;
+        bottom: 30px;
+        left: 30px;
+        background: var(--surface-primary);
+        padding: 10px 20px;
+        border-radius: 12px;
+        cursor: pointer;
+        font-size: 13px;
+        color: var(--accent-primary);
+        z-index: 5;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 6px var(--shadow-color);
+        border: 1px solid var(--border-color);
+        font-weight: 500;
+    }
+    .debug-toggle:hover {
+        background: var(--surface-secondary);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 8px var(--shadow-color);
+    }
+    .debug-panel {
+        position: fixed;
+        left: 30px;
+        bottom: 80px;
+        width: 320px;
+        background: var(--surface-primary);
+        border-radius: 16px;
+        box-shadow: 0 8px 16px var(--shadow-color);
+        z-index: 5;
+        display: none;
+        border: 1px solid var(--border-color);
+        backdrop-filter: blur(10px);
+        transition: all 0.3s ease;
+    }
+    .debug-panel.visible {
+        display: block;
+        animation: slideUp 0.3s ease;
+    }
+    @keyframes slideUp {
+        from { transform: translateY(20px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+    }
+    .debug-header {
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: var(--surface-secondary);
+        border-radius: 16px 16px 0 0;
+    }
+    .debug-header span {
+        font-weight: 600;
+        color: var(--text-primary);
+        font-size: 14px;
+    }
+    .debug-header button {
+        background: var(--accent-primary);
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    .debug-header button:hover {
+        background: var(--accent-secondary);
+        transform: translateY(-1px);
+    }
+    .debug-content {
+        padding: 16px;
+        max-height: 240px;
+        overflow-y: auto;
+        font-family: 'SF Mono', Menlo, Monaco, Consolas, monospace;
+        font-size: 12px;
+        line-height: 1.5;
+    }
+    .debug-content::-webkit-scrollbar {
+        width: 8px;
+    }
+    .debug-content::-webkit-scrollbar-track {
+        background: rgba(0, 0, 0, 0.02);
+        border-radius: 4px;
+    }
+    .debug-content::-webkit-scrollbar-thumb {
+        background: rgba(0, 0, 0, 0.1);
+        border-radius: 4px;
+    }
+    .debug-entry {
+        margin-bottom: 8px;
+        padding: 8px 12px;
+        border-radius: 8px;
+        font-size: 12px;
+        line-height: 1.5;
+        transition: all 0.2s ease;
+    }
+    .debug-entry:hover {
+        transform: translateX(2px);
+    }
+    .debug-entry.error {
+        background: var(--debug-error-bg);
+        color: var(--debug-error-color);
+        border-left: 3px solid #dc2626;
+    }
+    .debug-entry.info {
+        background: var(--debug-info-bg);
+        color: var(--debug-info-color);
+        border-left: 3px solid #3b82f6;
+    }
+
+    /* Theme Toggle Button */
+    .theme-toggle {
+        position: fixed;
+        top: 30px;
+        right: 30px;
+        background: var(--surface-primary);
+        padding: 12px;
+        border-radius: 50%;
+        cursor: pointer;
+        z-index: 1000;
+        box-shadow: 0 4px 6px var(--shadow-color);
+        border: 1px solid var(--border-color);
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .theme-toggle:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 8px var(--shadow-color);
+    }
+
+    .theme-toggle svg {
+        width: 24px;
+        height: 24px;
+        color: var(--accent-primary);
+    }
+
+    .listening-indicator {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background-color: var(--accent-primary);
+        opacity: 0.5;
+        transition: all 0.3s ease;
+    }
+
+    .listening-indicator.active {
+        opacity: 1;
+        box-shadow: 0 0 10px var(--accent-primary);
+        animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.2); }
+        100% { transform: scale(1); }
+    }

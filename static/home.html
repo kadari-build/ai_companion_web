@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Companions</title>
+    <link rel="stylesheet" href="static/companion.css">
+</head>
+<body>
+    <!-- Theme Toggle Button -->
+    <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" id="theme-icon">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+        </svg>
+    </button>
+
+    <!-- Main canvas for audio visualization -->
+    <canvas id="visualizer"></canvas>
+
+    <!-- Control panel -->
+    <div class="config-panel">
+        <button onclick="initVoiceChat()">Start Voice Chat</button>
+    </div>
+
+    <!-- Status indicators -->
+    <div class="status">Waiting to start...</div>
+    <div class="transcript"></div>
+    <div class="hint-text">Speak to interact</div>
+
+    <!-- Debug Panel -->
+    <div class="debug-toggle">Show Debug</div>
+    <div class="debug-panel">
+        <div class="debug-header">
+            <span>Debug Log</span>
+            <button class="copy-button" onclick="copyDebugLog()">Copy Log</button>
+        </div>
+        <div class="debug-content"></div>
+    </div>
+
+    <!-- Listening Indicator -->
+    <div class="listening-indicator" id="listeningIndicator"></div>
+
+    <script src="static/companion.js"></script>
+</body>
+</html>
+
