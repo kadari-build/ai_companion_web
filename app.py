@@ -178,15 +178,18 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                 # Generate audio for the response
                 response_text = response.get("messages", str(response))[-1].content
                 audio_base64 = await text_to_speech(response_text)
+
+                logger.info(f"\nResponse text: {response_text}\n")
                 
                 # Send the response with audio to client
                 response_data = {
+                    "type": "agent_response",
                     "companion": response.get("companion", "Companion"),
                     "response": response_text,
                     "audio": audio_base64,
                     "status": "success"
                 }
-                #logger.info(f"\nSending to frontend: {response_data}\n")
+                #logger.info(f"\nSending to frontend: {json.dumps(response_data)}\n")
                 await manager.send_message(
                     json.dumps(response_data),
                     client_id
@@ -207,7 +210,8 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
             except Exception as e:
                 await manager.send_message(
                     json.dumps({
-                        "response": str(e),
+                        "type": "error",
+                        "message": str(e),
                         "status": "error"
                     }),
                     client_id
