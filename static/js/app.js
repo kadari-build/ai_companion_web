@@ -235,6 +235,11 @@ export class AICompanionApp {
             event.preventDefault();
             this.toggleDebugPanel();
         }
+
+        if (event.key === 'Enter' && event.ctrlKey) {
+            event.preventDefault();
+            this.sendTextMessage();
+        }
     }
 
     toggleRecognition() {
@@ -320,7 +325,47 @@ export class AICompanionApp {
     resume() {
         speechRecognition.resumeRecognition();
     }
+
+
+     // Text input functions
+    showTextInput() {
+        document.getElementById('audioErrorFallback').style.display = 'none';
+        document.getElementById('textInputContainer').style.display = 'block';
+        document.getElementById('textInput').focus();
+    }
+    
+    hideTextInput() {
+        document.getElementById('textInputContainer').style.display = 'none';
+        document.getElementById('textInput').value = '';
+    }
+    
+    sendTextMessage() {
+        const textInput = document.getElementById('textInput');
+        const message = textInput.value.trim();
+        
+        if (!message) {
+            return;
+        }
+        
+        // Send message using the same mechanism as voice
+        if (window.webSocketManager) {
+            webSocketManager.sendUserMessage(message);
+            textInput.value = '';
+            hideTextInput();
+        }
+    }
 }
+
+window.toggleTheme = () => {
+    const currentTheme = document.body.classList.contains('dark') ? 'light' : 'dark';
+    document.body.classList.toggle('dark');
+    localStorage.setItem('theme', currentTheme);
+    logger.info(`Theme toggled to ${currentTheme}`);
+};
+
+window.copyDebugLog = () => {
+    logger.copyDebugLog();
+};
 
 logger.info('Launching AI Companion...');
 

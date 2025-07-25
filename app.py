@@ -1,4 +1,5 @@
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Depends
+from typing import Dict, Any
 from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -15,6 +16,15 @@ import os
 import base64
 import io
 from gtts import gTTS
+from datetime import datetime
+
+# Import authentication modules
+from database import init_db, get_db
+from auth_api import router as auth_router
+from protected_api import router as protected_router
+from auth_middleware import auth_middleware, get_current_user
+from models import User, UserSession, Conversation, UserContext
+from sqlalchemy.orm import Session
 
 app = FastAPI(title="Voice AI Companion", version="1.0.0")
 
@@ -29,6 +39,11 @@ app.add_middleware(
 
 # Mount static files (CSS, JS, images)
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# Include authentication routes
+app.include_router(auth_router)
+app.include_router(protected_router)
+
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -148,12 +163,67 @@ async def get_companions():
     return companions.get_companion_status()
 
 @app.post("/chat")
-async def chat(message: Message):
+async def chat(
+    message: Message,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Protected chat endpoint that requires authentication"""
     try:
-        response = await companions.process_message(message.content)
+        # Get user context from database
+        user_context_data = db.query(UserContext).filter(
+            UserContext.user_id == current_user["user_id"],
+            UserContext.context_type == "conversation_history"
+        ).first()
+        
+        # Add user context to the message
+        context_prompt = ""
+        if user_context_data:
+            recent_conversations = user_context_data.context_data.get("recent_messages", [])
+            if recent_conversations:
+                context_prompt = f"User context: {current_user['user_name']}. Recent conversations: {' '.join(recent_conversations[-5:])}\n\n"
+        
+        enhanced_message = context_prompt + message.content
+        response = await companions.process_message(enhanced_message)
+        
+        # Save conversation to database
+        response_text = response.get("messages", str(response))[-1].content
+        conversation = Conversation(
+            user_id=current_user["user_id"],
+            session_id="http_chat",
+            user_message=message.content,
+            ai_response=response_text,
+            companion_name=response.get("companion", "assistant")
+        )
+        db.add(conversation)
+        
+        # Update user context
+        if user_context_data:
+            recent_messages = user_context_data.context_data.get("recent_messages", [])
+            recent_messages.append(f"User: {message.content}")
+            recent_messages.append(f"AI: {response_text}")
+            recent_messages = recent_messages[-10:]  # Keep only last 10
+            user_context_data.context_data["recent_messages"] = recent_messages
+        else:
+            # Create new context
+            new_context = UserContext(
+                user_id=current_user["user_id"],
+                context_type="conversation_history",
+                context_data={
+                    "recent_messages": [
+                        f"User: {message.content}",
+                        f"AI: {response_text}"
+                    ]
+                }
+            )
+            db.add(new_context)
+        
+        db.commit()
+        
         return {
             "response": response,
-            "status": "success"
+            "status": "success",
+            "user_id": current_user["user_id"]
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -161,16 +231,75 @@ async def chat(message: Message):
 @app.websocket("/ws/{client_id}")
 async def websocket_endpoint(websocket: WebSocket, client_id: str):
     await manager.connect(websocket, client_id)
+    
+    # Store user context for this connection
+    user_context = None
+    
     try:
         while True:
             data = await websocket.receive_text()
             message_data = json.loads(data)
             logger.info(f"\nReceived message: {message_data}\n")
             
+            # Handle authentication using middleware
+            if message_data.get("type") == "auth":
+                session_token = message_data.get("session_token")
+                if session_token:
+                    # Use middleware to verify session token
+                    db = next(get_db())
+                    user_context = await auth_middleware.get_current_user_websocket(session_token, db)
+                    
+                    if user_context:
+                        await manager.send_message(
+                            json.dumps({
+                                "type": "auth_success",
+                                "user": user_context
+                            }),
+                            client_id
+                        )
+                        logger.info(f"User authenticated: {user_context['user_name']}")
+                    else:
+                        await manager.send_message(
+                            json.dumps({
+                                "type": "auth_error",
+                                "message": "Invalid session token"
+                            }),
+                            client_id
+                        )
+                continue
+            
+            # Check if user is authenticated
+            if not user_context:
+                await manager.send_message(
+                    json.dumps({
+                        "type": "error",
+                        "message": "Authentication required",
+                        "status": "error"
+                    }),
+                    client_id
+                )
+                continue
+            
             try:
-                # Process message through agent system
+                # Process message through agent system with user context
                 logger.info(f"\nProcessing message: {message_data['content']}\n")
-                response = await companions.process_message(message_data["content"])
+                
+                # Get user context from database
+                db = next(get_db())
+                user_context_data = db.query(UserContext).filter(
+                    UserContext.user_id == user_context["user_id"],
+                    UserContext.context_type == "conversation_history"
+                ).first()
+                
+                # Add user context to the message
+                context_prompt = ""
+                if user_context_data:
+                    recent_conversations = user_context_data.context_data.get("recent_messages", [])
+                    if recent_conversations:
+                        context_prompt = f"User context: {user_context['user_name']}. Recent conversations: {' '.join(recent_conversations[-5:])}\n\n"
+                
+                enhanced_message = context_prompt + message_data["content"]
+                response = await companions.process_message(enhanced_message)
                 
                 # Send response back to client
                 logger.info(f"\nSending response: {response}\n")
@@ -181,6 +310,40 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
 
                 logger.info(f"\nResponse text: {response_text}\n")
                 
+                # Save conversation to database
+                conversation = Conversation(
+                    user_id=user_context["user_id"],
+                    session_id=client_id,
+                    user_message=message_data["content"],
+                    ai_response=response_text,
+                    companion_name=response.get("companion", "assistant")
+                )
+                db.add(conversation)
+                
+                # Update user context with recent conversation
+                if user_context_data:
+                    recent_messages = user_context_data.context_data.get("recent_messages", [])
+                    recent_messages.append(f"User: {message_data['content']}")
+                    recent_messages.append(f"AI: {response_text}")
+                    # Keep only last 10 messages
+                    recent_messages = recent_messages[-10:]
+                    user_context_data.context_data["recent_messages"] = recent_messages
+                else:
+                    # Create new context
+                    new_context = UserContext(
+                        user_id=user_context["user_id"],
+                        context_type="conversation_history",
+                        context_data={
+                            "recent_messages": [
+                                f"User: {message_data['content']}",
+                                f"AI: {response_text}"
+                            ]
+                        }
+                    )
+                    db.add(new_context)
+                
+                db.commit()
+                
                 # Send the response with audio to client
                 response_data = {
                     "type": "agent_response",
@@ -189,23 +352,10 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                     "audio": audio_base64,
                     "status": "success"
                 }
-                #logger.info(f"\nSending to frontend: {json.dumps(response_data)}\n")
                 await manager.send_message(
                     json.dumps(response_data),
                     client_id
                 )
-                
-                # TODO:  Broadcast to other companions when we have multiple companions
-                '''
-                # Broadcast to other agents if needed
-                if message_data.get("broadcast", False):
-                    await manager.broadcast(
-                        json.dumps({
-                            "response": response,
-                            "status": "broadcast"
-                        })
-                    )
-                '''
 
             except Exception as e:
                 await manager.send_message(

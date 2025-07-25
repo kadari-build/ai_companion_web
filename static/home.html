@@ -4,15 +4,25 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Companions</title>
-    <link rel="stylesheet" href="static/companion.css">
+    <link rel="stylesheet" href="companion.css">
 </head>
 <body>
-    <!-- Theme Toggle Button -->
-    <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" id="theme-icon">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-        </svg>
-    </button>
+    <!-- Header with Sign Out -->
+    <div class="header">
+        <div class="user-info" id="userInfo">
+            <span class="user-name" id="userName">User</span>
+            <button class="sign-out-btn" onclick="signOut()" title="Sign Out">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+            </button>
+        </div>
+        <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" id="theme-icon">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+            </svg>
+        </button>
+    </div>
 
     <!-- Main canvas for audio visualization -->
     <canvas id="visualizer"></canvas>
@@ -21,6 +31,32 @@
     <div class="status">Waiting to start...</div>
     <div class="transcript"></div>
     <div class="hint-text">Speak to interact</div>
+    
+    <!-- Text Input Fallback -->
+    <div class="text-input-container" id="textInputContainer" style="display: none;">
+        <div class="text-input-header">
+            <span>Audio not available - Use text input instead</span>
+            <button class="close-text-input" onclick="hideTextInput()">×</button>
+        </div>
+        <div class="text-input-area">
+            <textarea 
+                id="textInput" 
+                placeholder="Type your message here..."
+                rows="3"
+                maxlength="500"
+            ></textarea>
+            <button class="send-text-btn" onclick="sendTextMessage()">Send</button>
+        </div>
+    </div>
+    
+    <!-- Audio Error Fallback -->
+    <div class="audio-error-fallback" id="audioErrorFallback" style="display: none;">
+        <div class="error-message">
+            <p>🎤 Audio device not found</p>
+            <p>You can still interact using text input</p>
+            <button class="enable-text-input" onclick="showTextInput()">Use Text Input</button>
+        </div>
+    </div>
 
     <!-- Debug Panel -->
     <div class="debug-toggle">Show Debug</div>
@@ -35,7 +71,7 @@
     <!-- Listening Indicator -->
     <div class="listening-indicator" id="listeningIndicator"></div>
 
-    <script type="module" src="static/js/main.js"></script>
+    <script type="module" src="js/app.js"></script>
 </body>
 </html>
 

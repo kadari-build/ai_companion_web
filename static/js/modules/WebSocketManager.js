@@ -52,11 +52,19 @@ export class WebSocketManager {
                 isConnected: true
             });
             
-            // Send initial connection message
-            this.sendMessage({
-                type: 'connection',
-                clientId: stateManager.websocket.clientId || this.generateClientId()
-            });
+            // Send authentication message if user is logged in
+            const sessionToken = localStorage.getItem('session_token');
+            logger.info('Session token: ' + sessionToken);
+            if (sessionToken) {
+                logger.info('Sending authentication message');
+                this.sendMessage({
+                    type: 'auth',
+                    session_token: sessionToken
+                });
+            } else {
+                // Redirect to login if not authenticated
+                window.location.href = '/static/login.html';
+            }
         };
 
         // Message received
@@ -95,6 +103,14 @@ export class WebSocketManager {
         logger.info(`Received message: ${data.type}`);
         
         switch (data.type) {
+            case 'auth_success':
+                this.handleAuthSuccess(data);
+                break;
+                
+            case 'auth_error':
+                this.handleAuthError(data);
+                break;
+                
             case 'connection_ack':
                 this.handleConnectionAck(data);
                 break;
@@ -114,6 +130,29 @@ export class WebSocketManager {
             default:
                 logger.warn(`Unknown message type: ${data.type}`);
         }
+    }
+
+    handleAuthSuccess(data) {
+        logger.info('Authentication successful');
+        if (data.user) {
+            // Store user info in state
+            stateManager.setUserState({
+                id: data.user.user_id,
+                name: data.user.user_name,
+                email: data.user.user_email,
+                isAuthenticated: true
+            });
+            logger.info(`Authenticated as: ${data.user.user_name}`);
+        }
+    }
+
+    handleAuthError(data) {
+        logger.error(`Authentication failed: ${data.message}`);
+        // Clear stored tokens and redirect to login
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        localStorage.removeItem('session_token');
+        window.location.href = '/static/login.html';
     }
 
     handleConnectionAck(data) {
@@ -274,6 +313,36 @@ export class WebSocketManager {
             logger.error(`Error sending message: ${error.message}`);
             return false;
         }
+    }
+
+    // Helper method to make authenticated HTTP requests
+    async makeAuthenticatedRequest(url, options = {}) {
+        const accessToken = localStorage.getItem('access_token');
+        if (!accessToken) {
+            throw new Error('No access token available');
+        }
+
+        const defaultOptions = {
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+                ...options.headers
+            },
+            ...options
+        };
+
+        const response = await fetch(url, defaultOptions);
+        
+        if (response.status === 401) {
+            // Token expired, redirect to login
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
+            localStorage.removeItem('session_token');
+            window.location.href = '/static/login.html';
+            throw new Error('Authentication required');
+        }
+
+        return response;
     }
 
     handleConnectionError(error) {

@@ -13,3 +13,11 @@ pyttsx3
 gtts
 python-dotenv
 ipython
+pydantic[email]
+# Database dependencies
+sqlalchemy
+psycopg2-binary
+alembic
+python-jose[cryptography]
+passlib[bcrypt]
+python-multipart

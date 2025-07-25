@@ -54,6 +54,14 @@ export class StateManager {
                 recorder: null,
                 chunks: [],
                 sessionId: null
+            },
+            
+            // User state
+            user: {
+                id: null,
+                name: null,
+                email: null,
+                isAuthenticated: false
             }
         };
         
@@ -67,6 +75,7 @@ export class StateManager {
     get agents() { return this.state.agents; }
     get ui() { return this.state.ui; }
     get media() { return this.state.media; }
+    get user() { return this.state.user; }
 
     // State setters with event emission
     setAudioState(updates) {
@@ -97,6 +106,11 @@ export class StateManager {
     setMediaState(updates) {
         this.state.media = { ...this.state.media, ...updates };
         this.emit('mediaStateChanged', this.state.media);
+    }
+
+    setUserState(updates) {
+        this.state.user = { ...this.state.user, ...updates };
+        this.emit('userStateChanged', this.state.user);
     }
 
     // Event system
