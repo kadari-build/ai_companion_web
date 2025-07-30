@@ -132,6 +132,7 @@ export class StateManager {
     }
 
     emit(event, data) {
+        // This function is used to emit events to the listeners
         if (this.listeners.has(event)) {
             this.listeners.get(event).forEach(callback => {
                 try {

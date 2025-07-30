@@ -10,6 +10,8 @@ import { particleSystem } from './modules/ParticleSystem.js';
 import { audioManager } from './modules/AudioManager.js';
 import { speechRecognition } from './modules/SpeechRecognition.js';
 import { webSocketManager } from './modules/WebSocketManager.js';
+import { signOut, isAuthenticated, requireAuth, toggleTheme, initializeTheme, copyDebugLog } from './utils/auth.js';
+import { showTextInput, hideTextInput, sendTextMessage, setupTextInputListeners, switchToVoiceMode, switchToTextMode, testTextInput } from './utils/ui.js';
 
 export class AICompanionApp {
     constructor() {
@@ -25,6 +27,13 @@ export class AICompanionApp {
     async init() {
         try {
             logger.info('Initializing AI Companion Application...');
+            
+            // Check authentication first
+            if (!this.checkAuthentication()) {
+                logger.error('User not authenticated, redirecting to login');
+                window.location.href = '/static/login.html';
+                return;
+            }
             
             // Check system requirements
             if (!await audioManager.checkSystemRequirements()) {
@@ -43,6 +52,9 @@ export class AICompanionApp {
             // Initialize UI
             this.initializeUI();
             
+            // Initialize global functions for HTML onclick
+            this.initializeGlobalFunctions();
+            
             // Start the application
             await this.start();
             
@@ -53,6 +65,10 @@ export class AICompanionApp {
             logger.error(`Failed to initialize application: ${error.message}`);
             this.handleInitializationError(error);
         }
+    }
+
+    checkAuthentication() {
+        return isAuthenticated();
     }
 
     async initializeModules() {
@@ -139,20 +155,27 @@ export class AICompanionApp {
     }
 
     initializeUI() {
-
-        // Initialize canvas first
-        //if (!this.initCanvas()) {
-        //    throw new Error('Failed to initialize canvas');
-        //}
-
-        // Set initial theme
-        const savedTheme = localStorage.getItem(CONFIG.THEME.storageKey) || CONFIG.THEME.default;
-        stateManager.setTheme(savedTheme);
+        // Initialize theme
+        this.initializeTheme();
         
-        // Update initial UI state
-        this.updateUI();
+        // Update user display
+        this.updateUserDisplay();
+        
+        // Setup debug panel toggle
+        const debugToggle = document.querySelector('.debug-toggle');
+        if (debugToggle) {
+            debugToggle.addEventListener('click', () => this.toggleDebugPanel());
+        }
+        
+        // Setup keyboard shortcuts
+        document.addEventListener('keydown', (event) => this.handleKeyboardShortcuts(event));
         
         logger.info('UI initialized');
+    }
+
+    initializeTheme() {
+        // Use the auth module function
+        initializeTheme();
     }
 
     async start() {
@@ -218,27 +241,15 @@ export class AICompanionApp {
     }
 
     handleKeyboardShortcuts(event) {
-        // Ctrl/Cmd + Space: Toggle recognition
-        if ((event.ctrlKey || event.metaKey) && event.code === 'Space') {
+        // Handle global keyboard shortcuts
+        if (event.ctrlKey && event.key === 'Enter') {
             event.preventDefault();
-            this.toggleRecognition();
+            sendTextMessage();
         }
         
-        // Ctrl/Cmd + R: Restart recognition
-        if ((event.ctrlKey || event.metaKey) && event.code === 'KeyR') {
-            event.preventDefault();
-            this.restartRecognition();
-        }
-        
-        // Ctrl/Cmd + D: Toggle debug panel
-        if ((event.ctrlKey || event.metaKey) && event.code === 'KeyD') {
-            event.preventDefault();
-            this.toggleDebugPanel();
-        }
-
-        if (event.key === 'Enter' && event.ctrlKey) {
-            event.preventDefault();
-            this.sendTextMessage();
+        // Add other keyboard shortcuts as needed
+        if (event.key === 'Escape') {
+            hideTextInput();
         }
     }
 
@@ -328,46 +339,63 @@ export class AICompanionApp {
 
 
      // Text input functions
-    showTextInput() {
-        document.getElementById('audioErrorFallback').style.display = 'none';
-        document.getElementById('textInputContainer').style.display = 'block';
-        document.getElementById('textInput').focus();
-    }
-    
-    hideTextInput() {
-        document.getElementById('textInputContainer').style.display = 'none';
-        document.getElementById('textInput').value = '';
-    }
-    
-    sendTextMessage() {
-        const textInput = document.getElementById('textInput');
-        const message = textInput.value.trim();
+    initializeGlobalFunctions() {
+        // Make functions available globally for HTML onclick attributes
+        window.signOut = signOut;
+        window.toggleTheme = toggleTheme;
+        window.showTextInput = showTextInput;
+        window.hideTextInput = hideTextInput;
+        window.sendTextMessage = sendTextMessage;
+        window.copyDebugLog = copyDebugLog;
+        window.switchToVoiceMode = switchToVoiceMode;
+        window.switchToTextMode = switchToTextMode;
+        window.testTextInput = testTextInput; // For debugging
         
-        if (!message) {
-            return;
+        // Setup text input listeners
+        setupTextInputListeners();
+        
+        // Initialize user display
+        this.updateUserDisplay();
+    }
+
+    updateUserDisplay() {
+        // Use the existing requireAuth function to handle user display
+        requireAuth();
+        
+        // Also check if header is visible
+        const headerElement = document.querySelector('.header');
+        if (headerElement) {
+            logger.info('Header element found');
+            // Ensure header is visible
+            headerElement.style.display = 'flex';
+            headerElement.style.visibility = 'visible';
+            headerElement.style.opacity = '1';
+            logger.info('Header visibility ensured');
+        } else {
+            logger.error('Header element not found');
         }
         
-        // Send message using the same mechanism as voice
-        if (window.webSocketManager) {
-            webSocketManager.sendUserMessage(message);
-            textInput.value = '';
-            hideTextInput();
+        // Check user info element
+        const userInfoElement = document.querySelector('.user-info');
+        if (userInfoElement) {
+            logger.info('User info element found');
+            userInfoElement.style.display = 'flex';
+            userInfoElement.style.visibility = 'visible';
+        } else {
+            logger.error('User info element not found');
+        }
+        
+        // Check theme toggle
+        const themeToggleElement = document.querySelector('.theme-toggle');
+        if (themeToggleElement) {
+            logger.info('Theme toggle element found');
+            themeToggleElement.style.display = 'flex';
+            themeToggleElement.style.visibility = 'visible';
+        } else {
+            logger.error('Theme toggle element not found');
         }
     }
 }
-
-window.toggleTheme = () => {
-    const currentTheme = document.body.classList.contains('dark') ? 'light' : 'dark';
-    document.body.classList.toggle('dark');
-    localStorage.setItem('theme', currentTheme);
-    logger.info(`Theme toggled to ${currentTheme}`);
-};
-
-window.copyDebugLog = () => {
-    logger.copyDebugLog();
-};
-
-logger.info('Launching AI Companion...');
 
 // Create and export singleton instance
 export const app = new AICompanionApp();
@@ -375,9 +403,31 @@ export const app = new AICompanionApp();
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', async () => {
     try {
+        console.log('DOM loaded, initializing application...');
+        logger.info('DOM loaded, initializing application...');
+        
+        // Set up global functions immediately for debugging
+        window.signOut = signOut;
+        window.toggleTheme = toggleTheme;
+        window.showTextInput = showTextInput;
+        window.hideTextInput = hideTextInput;
+        window.sendTextMessage = sendTextMessage;
+        window.copyDebugLog = copyDebugLog;
+        window.switchToVoiceMode = switchToVoiceMode;
+        window.switchToTextMode = switchToTextMode;
+        
+        console.log('Global functions set up:', {
+            signOut: typeof window.signOut,
+            toggleTheme: typeof window.toggleTheme,
+            showTextInput: typeof window.showTextInput,
+            switchToVoiceMode: typeof window.switchToVoiceMode,
+            switchToTextMode: typeof window.switchToTextMode
+        });
+        
         await app.init();
     } catch (error) {
         console.error('Failed to initialize application:', error);
+        logger.error('Application initialization failed:', error);
     }
 });
 

@@ -16,7 +16,7 @@ ipython
 pydantic[email]
 # Database dependencies
 sqlalchemy
-psycopg2-binary
+psycopg2
 alembic
 python-jose[cryptography]
 passlib[bcrypt]

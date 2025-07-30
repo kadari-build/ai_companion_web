@@ -239,6 +239,7 @@ export class SpeechRecognitionManager {
     }
 
     sendTranscript(transcript) {
+        // This function is called when the user speaks and the transcript is ready to be sent to the server
         const message = {
             type: 'user_message',
             content: transcript,

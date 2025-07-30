@@ -3,7 +3,9 @@
  * Handles authentication, registration, and form management
  */
 
-const API_BASE = 'http://localhost:7777';
+import { CONFIG } from './config/settings.js';
+import { logger } from './utils/logger.js';
+import { checkAuthStatus } from './utils/auth.js';
 
 // Form management
 function toggleForm(formType) {
@@ -27,7 +29,8 @@ function toggleForm(formType) {
 // Authentication functions
 async function login(email, password) {
     try {
-        const response = await fetch(`${API_BASE}/auth/login`, {
+        logger.info('Login request received for email: ' + email);
+        const response = await fetch(`${CONFIG.SERVER_URL}/auth/login`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -36,6 +39,7 @@ async function login(email, password) {
         });
         
         const data = await response.json();
+        logger.info('Login response ' + data);
         
         if (response.ok) {
             // Store tokens
@@ -47,12 +51,16 @@ async function login(email, password) {
             const userName = email.split('@')[0];
             localStorage.setItem('user_name', userName);
             
+            logger.info('Current URL: ' + window.location.href);
             // Redirect to main app
-            window.location.href = 'home.html';
+            window.location.href = '/static/home.html';
+
+            logger.info('New URL:' + window.location.href);
         } else {
             throw new Error(data.detail || 'Login failed');
         }
     } catch (error) {
+        logger.error('Login error: ' + error);
         throw error;
     }
 }
@@ -137,15 +145,6 @@ function setupRegisterForm() {
             registerBtn.textContent = 'Register';
         }
     });
-}
-
-// Check authentication status
-function checkAuthStatus() {
-    const accessToken = localStorage.getItem('access_token');
-    if (accessToken) {
-        // Redirect to main app if already logged in
-        window.location.href = 'home.html';
-    }
 }
 
 // Initialize when DOM is loaded

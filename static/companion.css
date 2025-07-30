@@ -115,7 +115,7 @@ Styles are organized into sections:
     /* Modern UI Components */
     .hint-text {
         position: absolute;
-        bottom: 30px;
+        bottom: 100px; /* Moved up to avoid conflict with input mode toggle */
         color: var(--text-secondary);
         font-size: 15px;
         text-align: center;
@@ -319,16 +319,12 @@ Styles are organized into sections:
         border-left: 3px solid #3b82f6;
     }
 
-    /* Theme Toggle Button */
+    /* Theme Toggle Button - moved inside header */
     .theme-toggle {
-        position: fixed;
-        top: 30px;
-        right: 30px;
         background: var(--surface-primary);
-        padding: 12px;
+        padding: 8px;
         border-radius: 50%;
         cursor: pointer;
-        z-index: 1000;
         box-shadow: 0 4px 6px var(--shadow-color);
         border: 1px solid var(--border-color);
         transition: all 0.3s ease;
@@ -343,14 +339,14 @@ Styles are organized into sections:
     }
 
     .theme-toggle svg {
-        width: 24px;
-        height: 24px;
+        width: 20px;
+        height: 20px;
         color: var(--accent-primary);
     }
 
     .listening-indicator {
         position: fixed;
-        bottom: 20px;
+        bottom: 100px; /* Moved up to avoid conflict with input mode toggle */
         right: 20px;
         width: 12px;
         height: 12px;
@@ -375,7 +371,7 @@ Styles are organized into sections:
     /* Text Input Fallback */
     .text-input-container {
         position: fixed;
-        bottom: 30px;
+        bottom: 100px; /* Moved up to avoid conflict with input mode toggle */
         left: 50%;
         transform: translateX(-50%);
         background: var(--surface-primary);
@@ -499,6 +495,61 @@ Styles are organized into sections:
     }
     
     .enable-text-input:hover {
+        background: var(--accent-primary);
+        color: white;
+        transform: translateY(-1px);
+    }
+
+    /* Input Mode Toggle */
+    .input-mode-toggle {
+        position: fixed;
+        bottom: 30px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 8px;
+        background: var(--surface-primary);
+        padding: 8px;
+        border-radius: 16px;
+        box-shadow: 0 4px 12px var(--shadow-color);
+        backdrop-filter: blur(10px);
+        border: 1px solid var(--border-color);
+        z-index: 5;
+    }
+
+    .mode-btn {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 16px;
+        border: none;
+        border-radius: 12px;
+        background: transparent;
+        color: var(--text-secondary);
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+    }
+
+    .mode-btn svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    .mode-btn:hover {
+        color: var(--text-primary);
+        background: var(--surface-secondary);
+    }
+
+    .mode-btn.active {
+        background: var(--accent-primary);
+        color: white;
+        box-shadow: 0 2px 4px rgba(79, 70, 229, 0.3);
+    }
+
+    .mode-btn.active:hover {
         background: var(--accent-secondary);
         transform: translateY(-1px);
     }

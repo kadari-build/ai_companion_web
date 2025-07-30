@@ -49,8 +49,6 @@ app.include_router(protected_router)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Define static directory path
-static_dir = Path("static")
 
 # Whisper transcription function
 async def whisper_transcribe(audio_data: bytes) -> str:
@@ -146,13 +144,7 @@ async def root():
     """Serve the main HTML page"""
     logger.info("Serving main HTML page")
     try:
-        # Try to read from static/home.html first
-        html_file = static_dir / "home.html"
-        if html_file.exists():
-            return FileResponse(html_file)
-        else:
-            # Fallback to embedded HTML
-            return {"message": "AI Agent System API"}
+        return FileResponse("static/login.html")
     except Exception as e:
         logger.error(f"Error serving HTML: {e}")
         return {"message": "AI Agent System API"}
@@ -240,133 +232,158 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
             data = await websocket.receive_text()
             message_data = json.loads(data)
             logger.info(f"\nReceived message: {message_data}\n")
-            
-            # Handle authentication using middleware
-            if message_data.get("type") == "auth":
-                session_token = message_data.get("session_token")
-                if session_token:
-                    # Use middleware to verify session token
-                    db = next(get_db())
-                    user_context = await auth_middleware.get_current_user_websocket(session_token, db)
-                    
-                    if user_context:
-                        await manager.send_message(
-                            json.dumps({
-                                "type": "auth_success",
-                                "user": user_context
-                            }),
-                            client_id
-                        )
-                        logger.info(f"User authenticated: {user_context['user_name']}")
+
+            match message_data.get("type"):
+                #Verify authentication from the front-end
+                case "auth":
+                    logger.info(f"\nReceived auth message: {message_data}\n")
+                    access_token = message_data.get("access_token")
+                    session_token = message_data.get("session_token")
+                    # Check if both session token and access token are present
+                    if session_token and access_token:
+                        # Both are present but lets use the middleware to verify only the access token as it is the only one we need to verify and its faster
+                        db = next(get_db())
+                        user_context = await auth_middleware.verify_access_token_user(access_token, db)
+                        if user_context:
+                            await manager.send_message(
+                                json.dumps({
+                                    "type": "auth_success",
+                                    "user": user_context,
+                                }),
+                                client_id
+                            )
+                        else:
+                            await manager.send_message(
+                                json.dumps({
+                                    "type": "auth_error",
+                                    "message": "Invalid access token",
+                                    "status": "error",
+                                }),
+                                client_id
+                            )
                     else:
                         await manager.send_message(
                             json.dumps({
                                 "type": "auth_error",
-                                "message": "Invalid session token"
+                                "message": "Invalid access token",
+                                "status": "error",
                             }),
                             client_id
                         )
-                continue
-            
-            # Check if user is authenticated
-            if not user_context:
-                await manager.send_message(
-                    json.dumps({
-                        "type": "error",
-                        "message": "Authentication required",
-                        "status": "error"
-                    }),
-                    client_id
-                )
-                continue
-            
-            try:
-                # Process message through agent system with user context
-                logger.info(f"\nProcessing message: {message_data['content']}\n")
+                    continue
+                case "user_message":
+                    logger.info(f"\nReceived user message: {message_data}\n")
+                    access_token = message_data.get("access_token")
+                    if access_token:
+                        # Both tokens are present but here we will use the middleware to only decode the jwt access token to ensure the user is authenticated for messages
+                        user_context = await auth_middleware.verify_access_token(access_token)
+                        if user_context:
+                            try:
+                                # Process message through agent system with user context
+                                logger.info(f"\nProcessing message: {message_data['content']}\n")
                 
-                # Get user context from database
-                db = next(get_db())
-                user_context_data = db.query(UserContext).filter(
-                    UserContext.user_id == user_context["user_id"],
-                    UserContext.context_type == "conversation_history"
-                ).first()
+                                # # Get user context from database
+                                # db = next(get_db())
+                                # user_context_data = db.query(UserContext).filter(
+                                # UserContext.user_id == user_context["user_id"],
+                                # UserContext.context_type == "conversation_history"
+                                # ).first()
                 
-                # Add user context to the message
-                context_prompt = ""
-                if user_context_data:
-                    recent_conversations = user_context_data.context_data.get("recent_messages", [])
-                    if recent_conversations:
-                        context_prompt = f"User context: {user_context['user_name']}. Recent conversations: {' '.join(recent_conversations[-5:])}\n\n"
+                                # # Add user context to the message
+                                # context_prompt = ""
+                                # if user_context_data:
+                                #     recent_conversations = user_context_data.context_data.get("recent_messages", [])
+                                #     if recent_conversations:
+                                #         context_prompt = f"User context: {user_context['user_name']}. Recent conversations: {' '.join(recent_conversations[-5:])}\n\n"
                 
-                enhanced_message = context_prompt + message_data["content"]
-                response = await companions.process_message(enhanced_message)
+                                enhanced_message = message_data["content"]
+                                response = await companions.process_message(enhanced_message)
                 
-                # Send response back to client
-                logger.info(f"\nSending response: {response}\n")
-                
-                # Generate audio for the response
-                response_text = response.get("messages", str(response))[-1].content
-                audio_base64 = await text_to_speech(response_text)
+                                # Send response back to client
+                                logger.info(f"\nSending response: {response}\n")
+                                
+                                # Generate audio for the response
+                                response_text = response.get("messages", str(response))[-1].content
+                                audio_base64 = await text_to_speech(response_text)
 
-                logger.info(f"\nResponse text: {response_text}\n")
-                
-                # Save conversation to database
-                conversation = Conversation(
-                    user_id=user_context["user_id"],
-                    session_id=client_id,
-                    user_message=message_data["content"],
-                    ai_response=response_text,
-                    companion_name=response.get("companion", "assistant")
-                )
-                db.add(conversation)
-                
-                # Update user context with recent conversation
-                if user_context_data:
-                    recent_messages = user_context_data.context_data.get("recent_messages", [])
-                    recent_messages.append(f"User: {message_data['content']}")
-                    recent_messages.append(f"AI: {response_text}")
-                    # Keep only last 10 messages
-                    recent_messages = recent_messages[-10:]
-                    user_context_data.context_data["recent_messages"] = recent_messages
-                else:
-                    # Create new context
-                    new_context = UserContext(
-                        user_id=user_context["user_id"],
-                        context_type="conversation_history",
-                        context_data={
-                            "recent_messages": [
-                                f"User: {message_data['content']}",
-                                f"AI: {response_text}"
-                            ]
-                        }
+                                logger.info(f"\nResponse text: {response_text}\n")
+                                
+                                # # Save conversation to database
+                                # conversation = Conversation(
+                                #     user_id=user_context["user_id"],
+                                #     session_id=client_id,
+                                #     user_message=message_data["content"],
+                                #     ai_response=response_text,
+                                #     companion_name=response.get("companion", "assistant")
+                                # )
+                                # db.add(conversation)
+                                
+                                # # Update user context with recent conversation
+                                # if user_context_data:
+                                #     recent_messages = user_context_data.context_data.get("recent_messages", [])
+                                #     recent_messages.append(f"User: {message_data['content']}")
+                                #     recent_messages.append(f"AI: {response_text}")
+                                #     # Keep only last 10 messages
+                                #     recent_messages = recent_messages[-10:]
+                                #     user_context_data.context_data["recent_messages"] = recent_messages
+                                # else:
+                                #     # Create new context
+                                #     new_context = UserContext(
+                                #         user_id=user_context["user_id"],
+                                #         context_type="conversation_history",
+                                #         context_data={
+                                #             "recent_messages": [
+                                #                 f"User: {message_data['content']}",
+                                #                 f"AI: {response_text}"
+                                #             ]
+                                #         }
+                                #     )
+                                #     db.add(new_context)
+                                
+                                # db.commit()
+                                
+                                # Send the response with audio to client
+                                response_data = {
+                                    "type": "agent_response",
+                                    "companion": response.get("companion", "Companion"),
+                                    "response": response_text,
+                                    "audio": audio_base64,
+                                    "status": "success",
+                                }
+                                await manager.send_message(
+                                    json.dumps(response_data),
+                                    client_id
+                                )
+                            except Exception as e:
+                                await manager.send_message(
+                                    json.dumps({
+                                        "type": "error",
+                                        "message": str(e),
+                                        "status": "error",
+                                    }),
+                                    client_id
+                                )
+                    else:
+                        await manager.send_message(
+                            json.dumps({
+                                "type": "auth_error",
+                                "message": "Invalid access token",
+                                "status": "error",
+                            }),
+                            client_id
+                        )
+                    continue
+                case _:
+                    logger.error(f"\nInvalid message type: {message_data.get('type')}\n")
+                    await manager.send_message(
+                        json.dumps({
+                            "type": "error",
+                            "message": "Invalid message type",
+                            "status": "error",
+                        }),
+                        client_id
                     )
-                    db.add(new_context)
-                
-                db.commit()
-                
-                # Send the response with audio to client
-                response_data = {
-                    "type": "agent_response",
-                    "companion": response.get("companion", "Companion"),
-                    "response": response_text,
-                    "audio": audio_base64,
-                    "status": "success"
-                }
-                await manager.send_message(
-                    json.dumps(response_data),
-                    client_id
-                )
-
-            except Exception as e:
-                await manager.send_message(
-                    json.dumps({
-                        "type": "error",
-                        "message": str(e),
-                        "status": "error"
-                    }),
-                    client_id
-                )
-                
+                    continue
     except WebSocketDisconnect:
         manager.disconnect(client_id)
 

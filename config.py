@@ -17,6 +17,7 @@ DATABASE_PORT = os.getenv("DATABASE_PORT", "5432")
 
 # Security
 SECRET_KEY = os.getenv("SECRET_KEY", "your-super-secret-key-change-this-in-production")
+ALGORITHM = "HS256"
 
 # Server Configuration
 HOST = os.getenv("HOST", "localhost")
@@ -24,4 +25,4 @@ PORT = int(os.getenv("PORT", "7777"))
 
 # JWT Configuration
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
-REFRESH_TOKEN_EXPIRE_DAYS = 7 
+REFRESH_TOKEN_EXPIRE_DAYS = 3

@@ -54,6 +54,8 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
 @router.post("/login", response_model=Token)
 def login(user_credentials: UserLogin, db: Session = Depends(get_db)):
     """Login user and return tokens"""
+
+    logger.info('Login request received for email: ' + user_credentials.email);
     # Find user by email
     user = db.query(User).filter(User.email == user_credentials.email).first()
     if not user:
@@ -113,6 +115,7 @@ def logout(session_data: dict, db: Session = Depends(get_db)):
     
     # Find and delete session
     session = db.query(UserSession).filter(UserSession.session_token == session_token).first()
+    logger.info(f"Logging out of user session: {session}")
     if session:
         db.delete(session)
         db.commit()

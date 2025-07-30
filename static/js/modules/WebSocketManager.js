@@ -7,6 +7,7 @@ import { CONFIG } from '../config/settings.js';
 import { logger } from '../utils/logger.js';
 import { stateManager } from '../utils/stateManager.js';
 import { audioManager } from './AudioManager.js';
+import { getAccessToken, handleAuthFailure } from '../utils/auth.js';
 
 export class WebSocketManager {
     constructor() {
@@ -29,6 +30,15 @@ export class WebSocketManager {
             logger.info(`Client ID: ${clientId}`);
             this.connection = new WebSocket(wsUrl + clientId);
             this.isConnecting = true;
+
+            // Set the client ID in the state manager
+            stateManager.websocket.clientId = clientId;
+
+            // Set the connection state in the state manager
+            stateManager.setWebSocketState({
+                connection: this.connection,
+                isConnected: true
+            });
             
             this.setupEventHandlers();
             
@@ -43,16 +53,7 @@ export class WebSocketManager {
     setupEventHandlers() {
         // Connection opened
         this.connection.onopen = () => {
-            logger.info('WebSocket connection established');
-            this.isConnecting = false;
-            this.reconnectAttempts = 0;
-            
-            stateManager.setWebSocketState({
-                connection: this.connection,
-                isConnected: true
-            });
-            
-            // Send authentication message if user is logged in
+            // Check authentication via websocket to ensure user can send authenticated messages to the server
             const sessionToken = localStorage.getItem('session_token');
             logger.info('Session token: ' + sessionToken);
             if (sessionToken) {
@@ -62,9 +63,16 @@ export class WebSocketManager {
                     session_token: sessionToken
                 });
             } else {
-                // Redirect to login if not authenticated
-                window.location.href = '/static/login.html';
+                // If authentication fails, sign out the user and redirect to login page
+                handleAuthFailure();
             }
+
+            logger.info('WebSocket connection established');
+            this.isConnecting = false;
+            this.reconnectAttempts = 0;
+            
+            
+
         };
 
         // Message received
@@ -149,10 +157,7 @@ export class WebSocketManager {
     handleAuthError(data) {
         logger.error(`Authentication failed: ${data.message}`);
         // Clear stored tokens and redirect to login
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
-        localStorage.removeItem('session_token');
-        window.location.href = '/static/login.html';
+        handleAuthFailure();
     }
 
     handleConnectionAck(data) {
@@ -170,7 +175,7 @@ export class WebSocketManager {
             const companion = data.companion || 'assistant';
             const audioData = data.audio;
 
-            logger.info(`Handling received response: ${JSON.stringify(data)}`);
+            //logger.info(`Handling received response: ${JSON.stringify(data)}`);
             
             logger.info(`Processing response from ${companion}`);
             
@@ -293,21 +298,30 @@ export class WebSocketManager {
     }
 
     sendMessage(message) {
+        // This function is used to send messages to the backendserver
+        // It is called when the user speaks or uses the text input to send a message to the ai companion.
+
+        //TODO: Add a front-end check to see if the user is authenticated.
+        //TODO: Include the bearer token in the request header.
+
         if (!stateManager.isWebSocketConnected()) {
             logger.error('WebSocket not connected, cannot send message');
             return false;
         }
 
+        const accessToken = getAccessToken();
+
         try {
-            const messageWithClientId = {
+            const authenticatedMessage = {
                 ...message,
+                access_token: accessToken,
                 clientId: stateManager.websocket.clientId,
                 timestamp: new Date().toISOString()
             };
             
-            this.connection.send(JSON.stringify(messageWithClientId));
+            this.connection.send(JSON.stringify(authenticatedMessage));
             logger.info(`Sent message: ${message.type}`);
-            logger.info(`Sent message: ${JSON.stringify(messageWithClientId)}`);
+            logger.info(`Sent message: ${JSON.stringify(authenticatedMessage)}`);
             return true;
         } catch (error) {
             logger.error(`Error sending message: ${error.message}`);

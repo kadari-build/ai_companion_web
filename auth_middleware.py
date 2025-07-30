@@ -11,7 +11,7 @@ from datetime import datetime
 
 from database import get_db
 from models import User, UserSession
-from auth import verify_token, SECRET_KEY, ALGORITHM
+from auth import verify_token
 
 # Security scheme for HTTP Bearer tokens
 security = HTTPBearer()
@@ -22,7 +22,7 @@ class AuthMiddleware:
     def __init__(self):
         self.require_auth = True
     
-    async def verify_access_token(self, token: str, db: Session) -> Optional[Dict[str, Any]]:
+    async def verify_access_token_user(self, token: str, db: Session) -> Optional[Dict[str, Any]]:
         """Verify JWT access token and return user info"""
         try:
             payload = verify_token(token)
@@ -78,6 +78,18 @@ class AuthMiddleware:
                 "is_authenticated": True
             }
             
+        except Exception as e:
+            return None
+
+    async def verify_access_token(self, access_token: str) -> Optional[dict]:
+        """Verify and decode access token only"""
+        try:
+            payload = verify_token(access_token)
+            if not payload or payload.get("type") != "access":
+                return None
+            
+            return payload
+        
         except Exception as e:
             return None
     
