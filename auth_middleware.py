@@ -26,7 +26,7 @@ class AuthMiddleware:
         """Verify JWT access token and return user info"""
         try:
             payload = verify_token(token)
-            if not payload or payload.get("type") != "access":
+            if not payload:
                 return None
             
             user_id = payload.get("sub")
@@ -84,10 +84,7 @@ class AuthMiddleware:
     async def verify_access_token(self, access_token: str) -> Optional[dict]:
         """Verify and decode access token only"""
         try:
-            payload = verify_token(access_token)
-            if not payload or payload.get("type") != "access":
-                return None
-            
+            payload = verify_token(access_token)    
             return payload
         
         except Exception as e:

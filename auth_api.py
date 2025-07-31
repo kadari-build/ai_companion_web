@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import logging
 
 from database import get_db
@@ -84,7 +84,7 @@ def login(user_credentials: UserLogin, db: Session = Depends(get_db)):
     
     # Create session
     session_token = str(uuid.uuid4())
-    expires_at = datetime.utcnow() + timedelta(days=7)
+    expires_at = datetime.now(timezone.utc)+ timedelta(days=7)
     
     db_session = UserSession(
         user_id=user.id,

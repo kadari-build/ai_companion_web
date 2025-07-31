@@ -5,7 +5,8 @@
 
 export const CONFIG = {
     // Server settings
-    SERVER_URL: 'http://localhost:7777',
+    SERVER_URL: 'https://localhost:7777',
+    WEBSOCKET_URL: 'wss://localhost:7777/ws/',
     
     // Audio settings
     AUDIO: {

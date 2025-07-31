@@ -1,10 +1,14 @@
 import { CONFIG } from '../config/settings.js';
 import { logger } from '../utils/logger.js';
+import { webSocketManager } from '../modules/WebSocketManager.js';
 
 // Sign out function
 export function signOut() {
     console.log('signOut function called');
     logger.info('Sign out function called');
+
+    // Close all websocket connections
+    webSocketManager.disconnect();
     
     const sessionToken = localStorage.getItem('session_token');
     console.log('Session token:', sessionToken ? 'Present' : 'Missing');
@@ -37,7 +41,7 @@ export function signOut() {
 
         setTimeout(() => {
             window.location.replace('/static/login.html');
-        }, 2000); // 2 second delay
+        }, 5000); // 5 second delay
     });
 }
 

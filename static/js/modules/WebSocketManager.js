@@ -25,7 +25,7 @@ export class WebSocketManager {
         }
         
         try {
-            const wsUrl = CONFIG.SERVER_URL.replace('http', 'ws') + '/ws/';
+            const wsUrl = CONFIG.WEBSOCKET_URL;
             const clientId = this.generateClientId();
             logger.info(`Client ID: ${clientId}`);
             this.connection = new WebSocket(wsUrl + clientId);
@@ -54,13 +54,12 @@ export class WebSocketManager {
         // Connection opened
         this.connection.onopen = () => {
             // Check authentication via websocket to ensure user can send authenticated messages to the server
-            const sessionToken = localStorage.getItem('session_token');
-            logger.info('Session token: ' + sessionToken);
-            if (sessionToken) {
+            const accessToken = localStorage.getItem('access_token');
+            logger.info('Access token: ' + accessToken);
+            if (accessToken) {
                 logger.info('Sending authentication message');
                 this.sendMessage({
-                    type: 'auth',
-                    session_token: sessionToken
+                    type: 'auth'
                 });
             } else {
                 // If authentication fails, sign out the user and redirect to login page
@@ -69,9 +68,7 @@ export class WebSocketManager {
 
             logger.info('WebSocket connection established');
             this.isConnecting = false;
-            this.reconnectAttempts = 0;
-            
-            
+            this.reconnectAttempts = 0;    
 
         };
 
@@ -152,10 +149,13 @@ export class WebSocketManager {
             });
             logger.info(`Authenticated as: ${data.user.user_name}`);
         }
+        this.reconnectAttempts = 0;
     }
 
     handleAuthError(data) {
         logger.error(`Authentication failed: ${data.message}`);
+        // Set reconnect attempts to max to prevent infinite reconnect attempts
+        this.reconnectAttempts = this.maxReconnectAttempts;
         // Clear stored tokens and redirect to login
         handleAuthFailure();
     }
@@ -164,6 +164,22 @@ export class WebSocketManager {
         if (data.clientId) {
             stateManager.setWebSocketState({ clientId: data.clientId });
             logger.info(`Client ID assigned: ${data.clientId}`);
+        }
+    }
+
+    handleConnectionError(error) {
+        logger.error(`WebSocket connection error: ${error.message}`);
+        
+        if (this.reconnectAttempts < this.maxReconnectAttempts) {
+            this.reconnectAttempts++;
+            logger.info(`Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+            
+            setTimeout(() => {
+                this.init();
+            }, this.reconnectDelay);
+        } else {
+            logger.error('Max reconnection attempts reached');
+            this.updateUI('Connection failed. Please refresh the page.');
         }
     }
 
@@ -359,22 +375,6 @@ export class WebSocketManager {
         return response;
     }
 
-    handleConnectionError(error) {
-        logger.error(`WebSocket connection error: ${error.message}`);
-        
-        if (this.reconnectAttempts < this.maxReconnectAttempts) {
-            this.reconnectAttempts++;
-            logger.info(`Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
-            
-            setTimeout(() => {
-                this.init();
-            }, this.reconnectDelay);
-        } else {
-            logger.error('Max reconnection attempts reached');
-            this.updateUI('Connection failed. Please refresh the page.');
-        }
-    }
-
     updateUI(message) {
         const statusDiv = document.querySelector(CONFIG.UI.statusDiv);
         if (statusDiv) {
@@ -392,6 +392,16 @@ export class WebSocketManager {
 
     disconnect() {
         if (this.connection) {
+            // Send logout notification to server
+            try {
+                this.sendMessage({
+                    type: 'disconnect'
+                });
+            } catch (error) {
+                logger.error('Failed to send logout notification:', error);
+            }
+        
+        // Close the connection
             this.connection.close(1000, 'Client disconnecting');
             this.connection = null;
         }
