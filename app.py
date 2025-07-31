@@ -1,9 +1,10 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Depends
-from typing import Dict, Any
 from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from pydantic import BaseModel
 from typing import List, Dict, Any
 import uuid
@@ -30,23 +31,78 @@ from sqlalchemy.orm import Session
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Start the monitoring
-    task = asyncio.create_task(manager.log_connection_stats())
-    yield
     try:
+        task = asyncio.create_task(manager.log_connection_stats())
+        yield
         task.cancel()
+        logger.info("Connection stats task cancelled")
     except Exception as e:
         logger.error(f"Error canceling task: {e}")
+    finally:
+        pass
+
+
+
+# Get CORS origins from environment
+def get_cors_origins() -> List[str]:
+    """Get CORS origins from environment variable"""
+    cors_origins = os.getenv("CORS_ORIGINS", "https://localhost:7777")
+    
+    # Split by comma and strip whitespace
+    origins = [origin.strip() for origin in cors_origins.split(",")]
+    
+    # Add localhost variants for development
+    if "https://localhost:7777" in origins:
+        origins.extend([
+            "http://localhost:7777",
+            "https://127.0.0.1:7777",
+            "http://127.0.0.1:7777"
+        ])
+    
+    return origins
+
+# Add CORS configuration for the different environments and domains
+def get_cors_config():
+    #Get CORS config based on the environment
+    environment = os.getenv("ENVIRONMENT", "Development")
+    if environment == "Production":
+        #Strict CORS config for production
+        return {
+            "allow_origins": get_cors_origins(),
+            "allow_credentials": True,
+            "allow_methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+            "allow_headers": ["*"],
+            "expose_headers": ["*"],
+            "max_age": 3600
+        }
+    else:
+        #Relaxed CORS config for development
+        return {
+            "allow_origins": get_cors_origins(),
+            "allow_credentials": True,
+            "allow_methods": ["*"],
+            "allow_headers": ["*"],
+            "expose_headers": ["*"],
+        }
+
 
 app = FastAPI(title="Voice AI Companion", version="1.0.0", lifespan=lifespan)
 
 # Enable CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://localhost:7777"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    **get_cors_config()
 )
+
+# Add security middleware
+app.add_middleware(
+    TrustedHostMiddleware, 
+    allowed_hosts=["localhost", "127.0.0.1", "yourdomain.com"]  # Configure for your domains
+)
+
+# Force HTTPS in production
+if os.getenv("ENVIRONMENT") == "Production":
+    app.add_middleware(HTTPSRedirectMiddleware)
 
 # Mount static files (CSS, JS, images)
 app.mount("/static", StaticFiles(directory="static"), name="static")
