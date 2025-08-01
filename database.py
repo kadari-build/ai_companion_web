@@ -11,12 +11,10 @@ import config
 
 load_dotenv()
 
-# Database configuration
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:RoxyM%40n%400589!@localhost:5432/ai_companion")
 
 # Create engine
 engine = create_engine(
-    DATABASE_URL,
+    config.DATABASE_URL,
     poolclass=StaticPool,
     echo=False  # Set to True for SQL debugging
 )

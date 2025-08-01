@@ -20,6 +20,8 @@ import io
 from gtts import gTTS
 from datetime import datetime, timedelta, timezone
 
+import config
+
 # Import authentication modules
 from database import init_db, get_db
 from auth_api import router as auth_router
@@ -28,35 +30,36 @@ from auth_middleware import auth_middleware, get_current_user
 from models import User, UserSession, Conversation, UserContext
 from sqlalchemy.orm import Session
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Start the monitoring
-    try:
-        task = asyncio.create_task(manager.log_connection_stats())
-        yield
-        task.cancel()
-        logger.info("Connection stats task cancelled")
-    except Exception as e:
-        logger.error(f"Error canceling task: {e}")
-    finally:
-        pass
+# @asynccontextmanager
+# async def lifespan(app: FastAPI):
+#     # Start the monitoring
+#     try:
+#         task = asyncio.create_task(manager.log_connection_stats())
+#         yield
+#         task.cancel()
+#         logger.info("Connection stats task cancelled")
+#     except Exception as e:
+#         logger.error(f"Error canceling task: {e}")
+#     finally:
+#         pass
 
 
 
 # Get CORS origins from environment
 def get_cors_origins() -> List[str]:
-    """Get CORS origins from environment variable"""
-    cors_origins = os.getenv("CORS_ORIGINS", "https://localhost:7777")
     
     # Split by comma and strip whitespace
-    origins = [origin.strip() for origin in cors_origins.split(",")]
+    origins = [origin.strip() for origin in config.CORS_ORIGINS.split(",")]
     
     # Add localhost variants for development
     if "https://localhost:7777" in origins:
         origins.extend([
             "http://localhost:7777",
             "https://127.0.0.1:7777",
-            "http://127.0.0.1:7777"
+            "http://127.0.0.1:7777",
+            #Add local ip address for local testing
+            config.LOCAL_URL_SSL,
+            config.LOCAL_URL
         ])
     
     return origins
@@ -86,7 +89,7 @@ def get_cors_config():
         }
 
 
-app = FastAPI(title="Voice AI Companion", version="1.0.0", lifespan=lifespan)
+app = FastAPI(title="Voice AI Companion", version="1.0.0")
 
 # Enable CORS
 app.add_middleware(
@@ -97,7 +100,7 @@ app.add_middleware(
 # Add security middleware
 app.add_middleware(
     TrustedHostMiddleware, 
-    allowed_hosts=["localhost", "127.0.0.1", "yourdomain.com"]  # Configure for your domains
+    allowed_hosts=["localhost", "127.0.0.1", "yourdomain.com", config.LOCAL_IP]  # Configure for your domains
 )
 
 # Force HTTPS in production
@@ -476,12 +479,14 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
 
 if __name__ == "__main__":
     import uvicorn
+
+    # Run the app
     uvicorn.run(
         app,
-        host="localhost",
-        port=7777,
-        ssl_keyfile="localhost.key",
-        ssl_certfile="localhost.crt",
+        host=config.HOST,
+        port=config.PORT,
+        ssl_keyfile="network.key",
+        ssl_certfile="network.crt",
         ws_ping_interval=300,
         ws_ping_timeout=60
         ) 

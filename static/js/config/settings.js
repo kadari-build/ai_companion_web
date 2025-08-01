@@ -3,10 +3,26 @@
  * Centralized settings for the AI Voice Assistant
  */
 
+function getServerUrl() {
+    const protocol = window.location.protocol;
+    const hostname = window.location.hostname;
+    const port = window.location.port || (protocol === 'https:' ? '443' : '80');
+    
+    // For development, use the current host
+    return `${protocol}//${hostname}:${port}`;
+}
+
+function getWebSocketUrl() {
+    const serverUrl = getServerUrl();
+    const protocol = serverUrl.startsWith('https:') ? 'wss:' : 'ws:';
+    const host = serverUrl.replace(/^https?:\/\//, '');
+    return `${protocol}//${host}/ws/`;
+}
+
 export const CONFIG = {
     // Server settings
-    SERVER_URL: 'https://localhost:7777',
-    WEBSOCKET_URL: 'wss://localhost:7777/ws/',
+    SERVER_URL: getServerUrl(),
+    WEBSOCKET_URL: getWebSocketUrl(),
     
     // Audio settings
     AUDIO: {

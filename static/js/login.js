@@ -67,7 +67,7 @@ async function login(email, password) {
 
 async function register(name, email, password) {
     try {
-        const response = await fetch(`${API_BASE}/auth/register`, {
+        const response = await fetch(`${CONFIG.SERVER_URL}/auth/register`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
