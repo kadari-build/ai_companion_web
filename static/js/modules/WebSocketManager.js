@@ -15,44 +15,104 @@ export class WebSocketManager {
         this.reconnectAttempts = 0;
         this.maxReconnectAttempts = CONFIG.WEBSOCKET.maxReconnectAttempts;
         this.reconnectDelay = CONFIG.WEBSOCKET.reconnectDelay;
-        this.isConnecting = false;
+        this.messageQueue = [];
     }
 
     async init() {
-        if (this.isConnecting || stateManager.isWebSocketConnected()) {
+        if (stateManager.isWebSocketConnected()) {
             logger.warn('WebSocket connection already in progress or connected');
             return;
         }
         
         try {
-            const wsUrl = CONFIG.WEBSOCKET_URL;
             const clientId = this.generateClientId();
-            logger.info(`Client ID: ${clientId}`);
-            this.connection = new WebSocket(wsUrl + clientId);
-            this.isConnecting = true;
+            logger.info(`Client ID: ${clientId}`);           
 
             // Set the client ID in the state manager
             stateManager.websocket.clientId = clientId;
+            
+            //this.setupEventHandlers();
 
-            // Set the connection state in the state manager
-            stateManager.setWebSocketState({
-                connection: this.connection,
-                isConnected: true
+
+            // Set up event handlers explicitly to use Promise and retry logic
+            return new Promise((resolve, reject) => {
+
+                this.connection = new WebSocket(CONFIG.WEBSOCKET_URL + clientId);
+                // Connection opened
+                this.connection.onopen = () => {         
+                    // Set the connection state in the state manager
+                    stateManager.setWebSocketState({
+                        connection: this.connection,
+                        isConnected: true
+                    });
+
+                    logger.info('WebSocket connection established');
+                    logger.info(`WebSocket connection initiated on: ${CONFIG.WEBSOCKET_URL} at ${new Date().toLocaleString()}`);
+                    this.reconnectAttempts = 0;  
+
+                    // Process any queued messages
+                    this.processMessageQueue();
+                    resolve();     
+                };
+
+                        // Message received
+                this.connection.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        this.handleMessage(data);
+                    } catch (error) {
+                        logger.error(`Error parsing WebSocket message: ${error.message}`);
+                    }
+                };
+
+                    // Connection closed
+                this.connection.onclose = (event) => {
+                    logger.info(`WebSocket connection closed: ${event.code} - ${event.reason}`);
+                    
+                    stateManager.setWebSocketState({
+                        connection: null,
+                        isConnected: false
+                    });
+                    
+                    if (!event.wasClean) {
+                        this.handleConnectionError(new Error('Connection closed unexpectedly'));
+                    }
+                };
+
+                // Connection error
+                this.connection.onerror = (error) => {
+                    logger.error(`WebSocket error: ${error.message}`);
+                    reject(error);
+                    this.handleConnectionError(error);
+                };
+                
             });
-            
-            this.setupEventHandlers();
-            
-            logger.info(`WebSocket connection initiated on: ${wsUrl}`);
-        } catch (error) {
+        } 
+        catch (error) {
             logger.error(`Failed to create WebSocket connection: ${error.message}`);
-            this.isConnecting = false;
+            stateManager.setWebSocketState({
+                connection: null,
+                isConnected: false
+            });
             this.handleConnectionError(error);
         }
+        
     }
 
     setupEventHandlers() {
         // Connection opened
         this.connection.onopen = () => {
+            
+            // Set the connection state in the state manager
+            stateManager.setWebSocketState({
+                connection: this.connection,
+                isConnected: true
+            });
+
+            logger.info('WebSocket connection established');
+            this.isConnecting = false;
+            this.reconnectAttempts = 0; 
+            
             // Check authentication via websocket to ensure user can send authenticated messages to the server
             const accessToken = localStorage.getItem('access_token');
             logger.info('Access token: ' + accessToken);
@@ -64,11 +124,7 @@ export class WebSocketManager {
             } else {
                 // If authentication fails, sign out the user and redirect to login page
                 handleAuthFailure();
-            }
-
-            logger.info('WebSocket connection established');
-            this.isConnecting = false;
-            this.reconnectAttempts = 0;    
+            } 
 
         };
 
@@ -104,6 +160,13 @@ export class WebSocketManager {
         };
     }
 
+    processMessageQueue() {
+        while (this.messageQueue.length > 0 && stateManager.connection.isConnected) {
+            const message = this.messageQueue.shift();
+            this.sendMessage(message);
+        }
+    }
+
     handleMessage(data) {
         logger.info(`Received message: ${data.type}`);
         
@@ -120,8 +183,12 @@ export class WebSocketManager {
                 this.handleConnectionAck(data);
                 break;
                 
-            case 'agent_response':
-                this.handleAgentResponse(data);
+            case 'companion_response':
+                this.handlecompanionResponse(data);
+                break;
+
+            case 'companion_created':
+                this.handleCompanionCreated(data);
                 break;
                 
             case 'error':
@@ -183,7 +250,7 @@ export class WebSocketManager {
         }
     }
 
-    handleAgentResponse(data) {
+    handlecompanionResponse(data) {
         try {
             // Extract response data
             //const response = data.response || data;
@@ -202,21 +269,37 @@ export class WebSocketManager {
                 audio: audioData
             });
             
-            // Update agent status
-            stateManager.setAgentsState({
+            // Update companion status
+            stateManager.setCompanionState({
                 status: {
-                    ...stateManager.agents.status,
+                    ...stateManager.companion.status,
                     [companion]: 'active'
                 }
             });
             
             // Trigger response processing
-            if (!stateManager.agents.isProcessingResponse) {
+            if (!stateManager.companion.isProcessingResponse) {
                 this.processNextResponse();
             }
             
         } catch (error) {
-            logger.error(`Error processing agent response: ${error.message}`);
+            logger.error(`Error processing companion response: ${error.message}`);
+        }
+    }
+
+    handleCompanionCreated(data) {
+        logger.info('Companion created');
+        stateManager.setCompanionState({
+            isInitialized: true,
+            companion: data.companion
+        });
+
+         // Resolve the promise if it exists
+         if (stateManager.companion.companionInitResolve) {
+            stateManager.companion.companionInitResolve(data);
+            stateManager.companion.companionInitResolve = null;
+            stateManager.companion.companionInitReject = null;
+            logger.info(`Companion initialization resolved at ${new Date().toLocaleString()}`);
         }
     }
 
@@ -241,11 +324,11 @@ export class WebSocketManager {
     }
 
     processNextResponse() {
-        if (!stateManager.hasResponses() || stateManager.agents.isProcessingResponse) {
+        if (!stateManager.hasResponses() || stateManager.companion.isProcessingResponse) {
             return;
         }
 
-        stateManager.setAgentsState({ isProcessingResponse: true });
+        stateManager.setCompanionState({ isProcessingResponse: true });
         
         const response = stateManager.getNextResponse();
         const { companion, messages, audio } = response;
@@ -285,7 +368,7 @@ export class WebSocketManager {
         
         // Mark as processed (audio will handle the flow)
         if (!audio) {
-            stateManager.setAgentsState({ isProcessingResponse: false });
+            stateManager.setCompanionState({ isProcessingResponse: false });
         }
     }
 
@@ -310,37 +393,34 @@ export class WebSocketManager {
         }
         
         // Mark as processed
-        stateManager.setAgentsState({ isProcessingResponse: false });
+        stateManager.setCompanionState({ isProcessingResponse: false });
     }
 
     sendMessage(message) {
-        // This function is used to send messages to the backendserver
-        // It is called when the user speaks or uses the text input to send a message to the ai companion.
+        // This function is used to send messages to the backend server
 
-        //TODO: Add a front-end check to see if the user is authenticated.
-        //TODO: Include the bearer token in the request header.
-
-        if (!stateManager.isWebSocketConnected()) {
-            logger.error('WebSocket not connected, cannot send message');
-            return false;
+        if (stateManager.isWebSocketConnected()) {
+            const accessToken = getAccessToken();
+            try {
+                const authenticatedMessage = {
+                    ...message,
+                    access_token: accessToken,
+                    clientId: stateManager.websocket.clientId,
+                    timestamp: new Date().toISOString()
+                };
+                
+                this.connection.send(JSON.stringify(authenticatedMessage));
+                logger.info(`Sent message: ${message.type}`);
+                logger.info(`Sent message: ${JSON.stringify(authenticatedMessage)}`);
+                return true;
+            } catch (error) {
+                logger.error(`Error sending message: ${error.message}`);
+                return false;
+            }
         }
-
-        const accessToken = getAccessToken();
-
-        try {
-            const authenticatedMessage = {
-                ...message,
-                access_token: accessToken,
-                clientId: stateManager.websocket.clientId,
-                timestamp: new Date().toISOString()
-            };
-            
-            this.connection.send(JSON.stringify(authenticatedMessage));
-            logger.info(`Sent message: ${message.type}`);
-            logger.info(`Sent message: ${JSON.stringify(authenticatedMessage)}`);
-            return true;
-        } catch (error) {
-            logger.error(`Error sending message: ${error.message}`);
+        else {
+            logger.error('WebSocket not connected, cannot send message. Adding to message queue.');
+            this.messageQueue.push(message);
             return false;
         }
     }

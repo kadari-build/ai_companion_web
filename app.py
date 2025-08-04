@@ -9,7 +9,8 @@ from pydantic import BaseModel
 from typing import List, Dict, Any
 import uuid
 import json
-from companions import Companions, create_companions
+#from companions import Companions, create_companions
+from companion import CompanionManager
 import asyncio
 import whisper
 import logging
@@ -171,6 +172,7 @@ class ConnectionManager:
         self.active_connections: Dict[str, WebSocket] = {}
         self.authenticated_users: Dict[str, Dict[str, Any]] = {}
         self.connection_timestamps: Dict[str, datetime] = {}
+        self.client_to_user: Dict[str, str] = {}  # client_id -> user_id
 
     async def connect(self, websocket: WebSocket, client_id: str):
         await websocket.accept()
@@ -226,20 +228,12 @@ class ConnectionManager:
             "text": transcription
         })
 
-    async def cleanup_connections(self):
-        """Cleanup connections that have been inactive for more than 10 minutes"""
-        while True:
-            await asyncio.sleep(60)
-            current_time = datetime.now(timezone.utc)
-            for client_id, timestamp in list(self.connection_timestamps.items()):
-                if current_time - timestamp > timedelta(minutes=10):
-                    await self.disconnect(client_id)
-
 
 manager = ConnectionManager()
+companion_manager = CompanionManager()
 
-# Initialize companions
-companions = create_companions()
+# Initialize companions (old way)
+#companions = create_companions()
 
 # Models
 class Message(BaseModel):
@@ -343,7 +337,7 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
         while True:
             data = await websocket.receive_text()
             message_data = json.loads(data)
-            logger.info(f"\nReceived message: {message_data}\n")
+            #logger.info(f"\nReceived message: {message_data}\n")
 
             match message_data.get("type"):
                 #Verify authentication from the front-end
@@ -367,8 +361,9 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                     db = next(get_db())
                     user_context = await auth_middleware.verify_access_token_user(access_token, db)
                     if user_context:
-                        # Store authenticated user context in the websocket
+                        # User is authenticated, store authenticated user context in the websocket
                         manager.authenticated_users[client_id] = user_context
+                        
                         await manager.send_message(
                             json.dumps({
                                 "type": "auth_success",
@@ -386,6 +381,57 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                             client_id
                             )
                         continue
+                case "create_companion":
+                    logger.info(f"\nReceived create companion message: {message_data}\n")
+                    access_token = message_data.get("access_token")
+                    
+                    # Check if access token is present
+                    if not access_token or not isinstance(access_token, str):
+                        await manager.send_message(
+                            json.dumps({
+                                "type": "auth_error",
+                                "message": "Missing or ill formed access token",
+                                "status": "error",
+                            }),
+                            client_id
+                        )
+                        continue
+
+                    user_context = await auth_middleware.verify_access_token(access_token)
+                    if user_context:
+                        # Create Companion
+                        companion = await companion_manager.create_companion(user_context["sub"])
+
+                        # Send the companion to the client
+                        if companion:
+                            await manager.send_message(
+                                json.dumps({
+                                    "type": "companion_created",
+                                    "companion": companion.name,
+                                    "status": "success",
+                                }),
+                                client_id)
+                        else:
+                            await manager.send_message(
+                                json.dumps({
+                                    "type": "error",
+                                    "message": "Failed to create companion",
+                                    "status": "error",
+                                }),
+                                client_id
+                            )
+                    else:
+                        await manager.send_message(
+                            json.dumps({
+                                "type": "auth_error",
+                                "message": "Invalid or expired access token",
+                                "status": "error",
+                            }),
+                            client_id
+                        )
+                        continue
+
+                
                 case "user_message":
                     logger.info(f"\nReceived user message: {message_data}\n")
                     access_token = message_data.get("access_token")
@@ -407,23 +453,23 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                     if user_context:
                         try:
                             # Process message through agent system with user context
-                            logger.info(f"\nProcessing message: {message_data['content']}\n")
+                            #logger.info(f"\nProcessing message: {message_data['content']}\n")
                 
                             enhanced_message = message_data["content"]
-                            response = await companions.process_message(enhanced_message)
-                
-                            # Send response back to client
-                            logger.info(f"\nSending response: {response}\n")
+
+                            # Get the user's companion
+                            companion = companion_manager.get_companion(user_context["sub"])
+                            response = await companion_manager.process_message(enhanced_message, companion)
                                 
                             # Generate audio for the response
                             response_text = response.get("messages", str(response))[-1].content
                             audio_base64 = await text_to_speech(response_text)
 
-                            logger.info(f"\nResponse text: {response_text}\n")                                
+                            logger.info(f"\nSending response to client: {response_text}\n")                                
                                 
                             # Send the response with audio to client
                             response_data = {
-                                "type": "agent_response",
+                                "type": "companion_response",
                                 "companion": response.get("companion", "Companion"),
                                 "response": response_text,
                                 "audio": audio_base64,
@@ -457,6 +503,7 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                     logger.info(f"\nReceived disconnect message: {message_data}\n")
                     logger.info(f"\nDisconnecting client: {client_id}\n")
                     await manager.disconnect(client_id)
+                    companion_manager.delete_companion(client_id)
                     continue
                 case _:
                     logger.error(f"\nInvalid message type: {message_data.get('type')}\n")

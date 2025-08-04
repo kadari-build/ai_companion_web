@@ -16,6 +16,7 @@ import { showTextInput, hideTextInput, sendTextMessage, setupTextInputListeners,
 export class AICompanionApp {
     constructor() {
         this.isInitialized = false;
+        this.init_retries = 0;
         this.modules = {
             particleSystem,
             audioManager,
@@ -54,6 +55,9 @@ export class AICompanionApp {
             
             // Initialize global functions for HTML onclick
             this.initializeGlobalFunctions();
+
+            // Initialize companion
+            await this.initializeCompanion();
             
             // Start the application
             await this.start();
@@ -178,6 +182,45 @@ export class AICompanionApp {
         initializeTheme();
     }
 
+    async initializeCompanion() {
+        if (stateManager.companion.isInitialized) {
+            logger.info('Companion already initialized');
+            return;
+        }
+
+        // Create a new promise for this initialization
+        stateManager.companion.companionInitPromise = new Promise((resolve, reject) => {
+            stateManager.companion.companionInitResolve = resolve;
+            stateManager.companion.companionInitReject = reject;
+        });
+
+        //Send a message to the backend to create a companion
+        logger.info(`Sending message to create companion for user ${stateManager.user.name}`);
+        webSocketManager.sendMessage({
+            type: 'create_companion',
+            data: {
+                user_name: stateManager.user.name
+            }
+        });
+
+        // Wait for the companion to be initialized using a Promise
+        try {
+            await Promise.race([
+                stateManager.companion.companionInitPromise,
+                new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('Companion initialization timeout')), 10000)
+                )
+            ]);
+            return true;
+        } catch (error) {
+            // Clean up promise on error
+            stateManager.companion.companionInitResolve = null;
+            stateManager.companion.companionInitReject = null;
+            logger.error(`Companion initialization failed: ${error.message}`);
+            throw error;
+        }        
+        
+    }
     async start() {
         try {
             
@@ -297,6 +340,20 @@ export class AICompanionApp {
         
         // Show error in debug panel
         logger.error(`Application initialization failed: ${error.message}`);
+        // Clean up app and retry initialization if it fails
+        if (this.init_retries < 3) {
+            statusDiv.textContent = "Retrying initialization...";
+            this.init_retries++;
+            setTimeout(() => {
+                this.cleanup();
+                this.init();
+            }, 3000);
+        }
+        else {
+            logger.error('Application initialization failed after 3 retries');
+            this.cleanup();
+            statusDiv.textContent = "Initialization failed";
+        }
     }
 
     cleanup() {
@@ -306,6 +363,15 @@ export class AICompanionApp {
         particleSystem.stop();
         speechRecognition.cleanup();
         audioManager.cleanup();
+
+        // Resolve the promise if it exists
+        if (stateManager.companion.companionInitResolve) {
+            stateManager.companion.companionInitResolve(null);
+            stateManager.companion.companionInitResolve = null;
+            stateManager.companion.companionInitReject = null;
+        }
+
+
         webSocketManager.disconnect();
         
         // Reset state

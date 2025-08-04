@@ -43,8 +43,8 @@ export const CONFIG = {
         distance: { min: 60, max: 180 }
     },
     
-    // Agent configurations
-    AGENTS: {
+    // Companion configurations
+    COMPANIONS: {
         'assistant': {
             color: { hue: 220, saturation: 80, brightness: 60 },
             position: 0.3
@@ -78,7 +78,7 @@ export const CONFIG = {
     // WebSocket settings
     WEBSOCKET: {
         reconnectDelay: 5000,
-        maxReconnectAttempts: 10
+        maxReconnectAttempts: 5
     },
     
     // Theme settings

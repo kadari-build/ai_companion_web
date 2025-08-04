@@ -25,7 +25,7 @@ export class Particle {
     }
 
     updateColors() {
-        const colors = CONFIG.AGENTS[this.agentId].color;
+        const colors = CONFIG.COMPANIONS[this.agentId].color;
         this.hue = colors.hue + Math.random() * 30;
         this.saturation = colors.saturation + Math.random() * 30;
         this.brightness = colors.brightness + Math.random() * 20;
@@ -101,7 +101,7 @@ export class ParticleSystem {
         this.particles = {};
         
         // Create particles for each agent
-        for (const [agentId, config] of Object.entries(CONFIG.AGENTS)) {
+        for (const [agentId, config] of Object.entries(CONFIG.COMPANIONS)) {
             this.particles[agentId] = [];
             for (let i = 0; i < CONFIG.PARTICLES.count; i++) {
                 const baseRadius = CONFIG.PARTICLES.baseRadius.min + Math.random() * (CONFIG.PARTICLES.baseRadius.max - CONFIG.PARTICLES.baseRadius.min);
@@ -160,15 +160,15 @@ export class ParticleSystem {
         ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--canvas-fade');
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Update and draw particles for each agent
+        // Update and draw particles for each companion
         for (const [agentId, agentParticles] of Object.entries(this.particles)) {
-            // Calculate agent-specific intensity
-            const agentIntensity = stateManager.agents.active[agentId] ? baseIntensity : 0.2;
+            // Calculate companion-specific intensity
+            const agentIntensity = stateManager.companion.active[agentId] ? baseIntensity : 0.2;
             
             // Optimize particle updates by reducing unnecessary calculations
-            const centerX = canvas.width * CONFIG.AGENTS[agentId].position;
+            const centerX = canvas.width * CONFIG.COMPANIONS[agentId].position;
             const centerY = canvas.height / 2;
-            const centerColor = CONFIG.AGENTS[agentId].color;
+            const centerColor = CONFIG.COMPANIONS[agentId].color;
             
             // Batch particle updates
             for (let i = 0; i < agentParticles.length; i++) {
@@ -231,16 +231,16 @@ export class ParticleSystem {
         this.resizeCanvas();
     }
 
-    onAgentActivated(agentId) {
-        stateManager.setAgentsState({
-            active: { ...stateManager.agents.active, [agentId]: true }
+    onCompanionActivated(agentId) {
+        stateManager.setCompanionState({
+            active: { ...stateManager.companion.active, [agentId]: true }
         });
     }
 
-    onAgentDeactivated(agentId) {
-        const active = { ...stateManager.agents.active };
+    onCompanionDeactivated(agentId) {
+        const active = { ...stateManager.companion.active };
         delete active[agentId];
-        stateManager.setAgentsState({ active });
+        stateManager.setCompanionState({ active });
     }
 }
 
