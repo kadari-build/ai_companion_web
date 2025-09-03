@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Companion - Login</title>
+    <link rel="stylesheet" href="/static/login.css">
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="brand-header">
+                <div class="brand-icon">🤖</div>
+                <h1>AI Companion</h1>
+                <p class="brand-subtitle">Your intelligent assistant</p>
+            </div>
+            
+            <!-- Voice Status Section (Hidden for now) -->
+            <div class="voice-status-section" style="display: none;">
+                <div class="voice-toggle-control">
+                    <button type="button" class="voice-toggle-btn" id="voiceToggleBtn">
+                        <div class="toggle-icon-wrapper">
+                            <span class="mic-icon">🎤</span>
+                        </div>
+                        <span class="toggle-text">Voice Input: ON</span>
+                        <div class="toggle-indicator"></div>
+                    </button>
+                </div>
+                
+                <!-- Conversation Progress -->
+                <div class="conversation-progress" id="conversationProgress">
+                    Listening for wake words... Say "use voice" to enable voice login
+                </div>
+                
+                <!-- Voice Status -->
+                <div class="voice-status" id="mainVoiceStatus"></div>
+            </div>
+            
+            <!-- Shared Login Form -->
+            <div class="form-container active" id="loginForm">
+                <h2>Welcome Back</h2>
+                <form id="loginFormElement">
+                    <div class="form-group">
+                        <label for="loginEmail">Email</label>
+                        <input type="email" id="loginEmail" name="email" required 
+                               placeholder="Enter your email address">
+                    </div>
+                    <div class="form-group">
+                        <label for="loginPassword">Password</label>
+                        <input type="password" id="loginPassword" name="password" required
+                               placeholder="Enter your password">
+                    </div>
+                    <button type="submit" class="btn btn-primary" id="loginBtn">
+                        <span class="btn-text">Login</span>
+                        <div class="btn-loader"></div>
+                    </button>
+                    <div id="loginError" class="error-message" role="alert" aria-live="assertive"></div>
+                </form>
+                <div class="toggle-form">
+                    <p>Don't have an account? <a href="#" onclick="toggleForm('register')">Create Account</a></p>
+                </div>
+            </div>
+            
+            <!-- Register Form -->
+            <div id="registerForm" class="form-container">
+                <h2>Create Account</h2>
+                <form id="registerFormElement">
+                    <div class="form-group">
+                        <label for="registerName">Full Name</label>
+                        <input type="text" id="registerName" name="name" required 
+                               placeholder="Enter your full name">
+                    </div>
+                    <div class="form-group">
+                        <label for="registerEmail">Email</label>
+                        <input type="email" id="registerEmail" name="email" required 
+                               placeholder="Enter your email address">
+                    </div>
+                    <div class="form-group">
+                        <label for="registerPassword">Password</label>
+                        <input type="password" id="registerPassword" name="password" required
+                               placeholder="Create a secure password">
+                    </div>
+                    <button type="submit" class="btn btn-primary" id="registerBtn">
+                        <span class="btn-text">Create Account</span>
+                        <div class="btn-loader"></div>
+                    </button>
+                    <div id="registerError" class="error-message" role="alert" aria-live="assertive"></div>
+                    <div id="registerSuccess" class="success-message" role="status" aria-live="polite"></div>
+                </form>
+                <div class="toggle-form">
+                    <p>Already have an account? <a href="#" onclick="toggleForm('login')">Sign In</a></p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script type="module" src="/static/js/login.js"></script>
+</body>
+</html> 

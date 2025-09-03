@@ -58,6 +58,54 @@ Styles are organized into sections:
         color: var(--text-primary);
         transition: all 0.3s ease;
     }
+    
+    /* Header with user info and sign out */
+    .header {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        z-index: 10;
+    }
+    
+    .user-info {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: var(--surface-primary);
+        padding: 8px 16px;
+        border-radius: 25px;
+        box-shadow: 0 4px 8px var(--shadow-color);
+        backdrop-filter: blur(10px);
+        border: 1px solid var(--border-color);
+    }
+    
+    .user-name {
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--text-primary);
+    }
+    
+    .sign-out-btn {
+        background: none;
+        border: none;
+        color: var(--text-secondary);
+        cursor: pointer;
+        padding: 4px;
+        border-radius: 4px;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .sign-out-btn:hover {
+        color: var(--accent-primary);
+        background: var(--surface-secondary);
+        transform: scale(1.1);
+    }
     canvas {
         position: absolute;
         z-index: 1;
@@ -67,7 +115,7 @@ Styles are organized into sections:
     /* Modern UI Components */
     .hint-text {
         position: absolute;
-        bottom: 30px;
+        bottom: 100px; /* Moved up to avoid conflict with input mode toggle */
         color: var(--text-secondary);
         font-size: 15px;
         text-align: center;
@@ -271,16 +319,12 @@ Styles are organized into sections:
         border-left: 3px solid #3b82f6;
     }
 
-    /* Theme Toggle Button */
+    /* Theme Toggle Button - moved inside header */
     .theme-toggle {
-        position: fixed;
-        top: 30px;
-        right: 30px;
         background: var(--surface-primary);
-        padding: 12px;
+        padding: 8px;
         border-radius: 50%;
         cursor: pointer;
-        z-index: 1000;
         box-shadow: 0 4px 6px var(--shadow-color);
         border: 1px solid var(--border-color);
         transition: all 0.3s ease;
@@ -295,14 +339,14 @@ Styles are organized into sections:
     }
 
     .theme-toggle svg {
-        width: 24px;
-        height: 24px;
+        width: 20px;
+        height: 20px;
         color: var(--accent-primary);
     }
 
     .listening-indicator {
         position: fixed;
-        bottom: 20px;
+        bottom: 100px; /* Moved up to avoid conflict with input mode toggle */
         right: 20px;
         width: 12px;
         height: 12px;
@@ -322,4 +366,190 @@ Styles are organized into sections:
         0% { transform: scale(1); }
         50% { transform: scale(1.2); }
         100% { transform: scale(1); }
+    }
+    
+    /* Text Input Fallback */
+    .text-input-container {
+        position: fixed;
+        bottom: 100px; /* Moved up to avoid conflict with input mode toggle */
+        left: 50%;
+        transform: translateX(-50%);
+        background: var(--surface-primary);
+        border-radius: 16px;
+        box-shadow: 0 8px 24px var(--shadow-color);
+        backdrop-filter: blur(10px);
+        border: 1px solid var(--border-color);
+        z-index: 5;
+        min-width: 400px;
+        max-width: 600px;
+        animation: slideUp 0.3s ease;
+    }
+    
+    .text-input-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--border-color);
+        font-weight: 500;
+        color: var(--text-primary);
+    }
+    
+    .close-text-input {
+        background: none;
+        border: none;
+        color: var(--text-secondary);
+        cursor: pointer;
+        font-size: 20px;
+        padding: 4px;
+        border-radius: 4px;
+        transition: all 0.2s ease;
+    }
+    
+    .close-text-input:hover {
+        color: var(--accent-primary);
+        background: var(--surface-secondary);
+    }
+    
+    .text-input-area {
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    #textInput {
+        width: 100%;
+        min-height: 80px;
+        padding: 12px;
+        border: 2px solid var(--border-color);
+        border-radius: 8px;
+        background: var(--surface-secondary);
+        color: var(--text-primary);
+        font-family: inherit;
+        font-size: 14px;
+        resize: vertical;
+        transition: border-color 0.2s ease;
+    }
+    
+    #textInput:focus {
+        outline: none;
+        border-color: var(--accent-primary);
+    }
+    
+    .send-text-btn {
+        align-self: flex-end;
+        background: var(--accent-primary);
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    
+    .send-text-btn:hover {
+        background: var(--accent-secondary);
+        transform: translateY(-1px);
+    }
+    
+    /* Audio Error Fallback */
+    .audio-error-fallback {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: var(--surface-primary);
+        border-radius: 16px;
+        box-shadow: 0 8px 24px var(--shadow-color);
+        backdrop-filter: blur(10px);
+        border: 1px solid var(--border-color);
+        z-index: 5;
+        padding: 30px;
+        text-align: center;
+        max-width: 400px;
+    }
+    
+    .error-message p {
+        margin: 8px 0;
+        color: var(--text-primary);
+    }
+    
+    .error-message p:first-child {
+        font-size: 18px;
+        font-weight: 600;
+        margin-bottom: 16px;
+    }
+    
+    .enable-text-input {
+        background: var(--accent-primary);
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 8px;
+        font-weight: 500;
+        cursor: pointer;
+        margin-top: 16px;
+        transition: all 0.2s ease;
+    }
+    
+    .enable-text-input:hover {
+        background: var(--accent-primary);
+        color: white;
+        transform: translateY(-1px);
+    }
+
+    /* Input Mode Toggle */
+    .input-mode-toggle {
+        position: fixed;
+        bottom: 30px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 8px;
+        background: var(--surface-primary);
+        padding: 8px;
+        border-radius: 16px;
+        box-shadow: 0 4px 12px var(--shadow-color);
+        backdrop-filter: blur(10px);
+        border: 1px solid var(--border-color);
+        z-index: 5;
+    }
+
+    .mode-btn {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 16px;
+        border: none;
+        border-radius: 12px;
+        background: transparent;
+        color: var(--text-secondary);
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+    }
+
+    .mode-btn svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    .mode-btn:hover {
+        color: var(--text-primary);
+        background: var(--surface-secondary);
+    }
+
+    .mode-btn.active {
+        background: var(--accent-primary);
+        color: white;
+        box-shadow: 0 2px 4px rgba(79, 70, 229, 0.3);
+    }
+
+    .mode-btn.active:hover {
+        background: var(--accent-secondary);
+        transform: translateY(-1px);
     }

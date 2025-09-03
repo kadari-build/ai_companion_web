@@ -4,15 +4,25 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Companions</title>
-    <link rel="stylesheet" href="static/companion.css">
+    <link rel="stylesheet" href="/static/companion.css">
 </head>
 <body>
-    <!-- Theme Toggle Button -->
-    <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" id="theme-icon">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-        </svg>
-    </button>
+    <!-- Header with Sign Out -->
+    <div class="header">
+        <div class="user-info" id="userInfo">
+            <span class="user-name" id="userName">User</span>
+            <button class="sign-out-btn" onclick="signOut()" title="Sign Out">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+            </button>
+        </div>
+        <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" id="theme-icon">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+            </svg>
+        </button>
+    </div>
 
     <!-- Main canvas for audio visualization -->
     <canvas id="visualizer"></canvas>
@@ -20,7 +30,49 @@
     <!-- Status indicators -->
     <div class="status">Waiting to start...</div>
     <div class="transcript"></div>
-    <div class="hint-text">Speak to interact</div>
+    <div class="hint-text">Speak to interact...</div>
+    
+    <!-- Input Mode Toggle -->
+    <div class="input-mode-toggle">
+        <button class="mode-btn active" id="voiceModeBtn" onclick="switchToVoiceMode()" title="Voice Input">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+            </svg>
+            Voice
+        </button>
+        <button class="mode-btn" id="textModeBtn" onclick="switchToTextMode()" title="Text Input">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+            Text
+        </button>
+    </div>
+    
+    <!-- Text Input Container -->
+    <div class="text-input-container" id="textInputContainer" style="display: none;">
+        <div class="text-input-header">
+            <span>Type your message</span>
+            <button class="close-text-input" onclick="hideTextInput()">×</button>
+        </div>
+        <div class="text-input-area">
+            <textarea 
+                id="textInput" 
+                placeholder="Type your message here..."
+                rows="3"
+                maxlength="500"
+            ></textarea>
+            <button class="send-text-btn" onclick="sendTextMessage()">Send</button>
+        </div>
+    </div>
+    
+    <!-- Audio Error Fallback -->
+    <div class="audio-error-fallback" id="audioErrorFallback" style="display: none;">
+        <div class="error-message">
+            <p>🎤 Audio device not found</p>
+            <p>You can still interact using text input</p>
+            <button class="enable-text-input" onclick="switchToTextMode()">Use Text Input</button>
+        </div>
+    </div>
 
     <!-- Debug Panel -->
     <div class="debug-toggle">Show Debug</div>
@@ -35,7 +87,7 @@
     <!-- Listening Indicator -->
     <div class="listening-indicator" id="listeningIndicator"></div>
 
-    <script type="module" src="static/js/main.js"></script>
+    <script type="module" src="/static/js/app.js"></script>
 </body>
 </html>
 

@@ -1,6 +1,8 @@
+#AI/LLM
 langchain_openai
 langchain_anthropic
 langchain_google_genai
+langchain-tavily
 pydantic
 langgraph
 langchain
@@ -13,3 +15,13 @@ pyttsx3
 gtts
 python-dotenv
 ipython
+pydantic[email]
+langchain-google-community[gmail]
+
+# Database dependencies
+sqlalchemy
+psycopg2
+alembic
+python-jose[cryptography]
+passlib[bcrypt]
+python-multipart

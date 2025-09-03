@@ -3,9 +3,26 @@
  * Centralized settings for the AI Voice Assistant
  */
 
+function getServerUrl() {
+    const protocol = window.location.protocol;
+    const hostname = window.location.hostname;
+    const port = window.location.port || (protocol === 'https:' ? '443' : '80');
+    
+    // For development, use the current host
+    return `${protocol}//${hostname}:${port}`;
+}
+
+function getWebSocketUrl() {
+    const serverUrl = getServerUrl();
+    const protocol = serverUrl.startsWith('https:') ? 'wss:' : 'ws:';
+    const host = serverUrl.replace(/^https?:\/\//, '');
+    return `${protocol}//${host}/ws/`;
+}
+
 export const CONFIG = {
     // Server settings
-    SERVER_URL: 'http://localhost:7777',
+    SERVER_URL: getServerUrl(),
+    WEBSOCKET_URL: getWebSocketUrl(),
     
     // Audio settings
     AUDIO: {
@@ -26,11 +43,11 @@ export const CONFIG = {
         distance: { min: 60, max: 180 }
     },
     
-    // Agent configurations
-    AGENTS: {
+    // Companion configurations
+    COMPANIONS: {
         'assistant': {
             color: { hue: 220, saturation: 80, brightness: 60 },
-            position: 0.3
+            position: 0.5
         }
     },
     
@@ -61,7 +78,7 @@ export const CONFIG = {
     // WebSocket settings
     WEBSOCKET: {
         reconnectDelay: 5000,
-        maxReconnectAttempts: 10
+        maxReconnectAttempts: 5
     },
     
     // Theme settings

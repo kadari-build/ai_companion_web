@@ -32,12 +32,17 @@ export class StateManager {
                 isConnected: false
             },
             
-            // Agent state
-            agents: {
-                active: {},
+            // Companion state
+            companion: {
+                companion: null,
                 status: {},
+                active: {},
                 responseQueue: [],
-                isProcessingResponse: false
+                isProcessingResponse: false,
+                isInitialized: false,
+                companionInitPromise: null,
+                companionInitResolve: null,
+                companionInitReject: null
             },
             
             // UI state
@@ -54,6 +59,14 @@ export class StateManager {
                 recorder: null,
                 chunks: [],
                 sessionId: null
+            },
+            
+            // User state
+            user: {
+                id: null,
+                name: null,
+                email: null,
+                isAuthenticated: false
             }
         };
         
@@ -64,9 +77,10 @@ export class StateManager {
     get audio() { return this.state.audio; }
     get recognition() { return this.state.recognition; }
     get websocket() { return this.state.websocket; }
-    get agents() { return this.state.agents; }
+    get companion() { return this.state.companion; }
     get ui() { return this.state.ui; }
     get media() { return this.state.media; }
+    get user() { return this.state.user; }
 
     // State setters with event emission
     setAudioState(updates) {
@@ -84,9 +98,9 @@ export class StateManager {
         this.emit('websocketStateChanged', this.state.websocket);
     }
 
-    setAgentsState(updates) {
-        this.state.agents = { ...this.state.agents, ...updates };
-        this.emit('agentsStateChanged', this.state.agents);
+    setCompanionState(updates) {
+        this.state.companion = { ...this.state.companion, ...updates };
+        this.emit('companionStateChanged', this.state.companion);
     }
 
     setUIState(updates) {
@@ -97,6 +111,11 @@ export class StateManager {
     setMediaState(updates) {
         this.state.media = { ...this.state.media, ...updates };
         this.emit('mediaStateChanged', this.state.media);
+    }
+
+    setUserState(updates) {
+        this.state.user = { ...this.state.user, ...updates };
+        this.emit('userStateChanged', this.state.user);
     }
 
     // Event system
@@ -118,6 +137,7 @@ export class StateManager {
     }
 
     emit(event, data) {
+        // This function is used to emit events to the listeners
         if (this.listeners.has(event)) {
             this.listeners.get(event).forEach(callback => {
                 try {
@@ -156,16 +176,16 @@ export class StateManager {
 
     // Queue management
     addToResponseQueue(response) {
-        this.state.agents.responseQueue.push(response);
-        this.emit('responseQueueChanged', this.state.agents.responseQueue);
+        this.state.companion.responseQueue.push(response);
+        this.emit('responseQueueChanged', this.state.companion.responseQueue);
     }
 
     getNextResponse() {
-        return this.state.agents.responseQueue.shift();
+        return this.state.companion.responseQueue.shift();
     }
 
     hasResponses() {
-        return this.state.agents.responseQueue.length > 0;
+        return this.state.companion.responseQueue.length > 0;
     }
 
     // Audio queue management
@@ -199,7 +219,7 @@ export class StateManager {
             audio: { context: null, analyser: null, dataArray: null, isStreaming: false, queue: [], currentAudio: null },
             recognition: { instance: null, isRunning: false, isListening: false, isSpeaking: false, currentSpeaker: 'none' },
             websocket: { connection: null, clientId: null, isConnected: false },
-            agents: { active: {}, status: {}, responseQueue: [], isProcessingResponse: false },
+            companion: { active: {}, status: {}, responseQueue: [], isProcessingResponse: false },
             ui: { canvas: null, ctx: null, particles: {}, animationId: null, currentTheme: 'light' },
             media: { recorder: null, chunks: [], sessionId: null }
         };

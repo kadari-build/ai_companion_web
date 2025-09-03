@@ -10,10 +10,13 @@ import { particleSystem } from './modules/ParticleSystem.js';
 import { audioManager } from './modules/AudioManager.js';
 import { speechRecognition } from './modules/SpeechRecognition.js';
 import { webSocketManager } from './modules/WebSocketManager.js';
+import { signOut, isAuthenticated, requireAuth, toggleTheme, initializeTheme, copyDebugLog } from './utils/auth.js';
+import { showTextInput, hideTextInput, sendTextMessage, setupTextInputListeners, switchToVoiceMode, switchToTextMode, testTextInput } from './utils/ui.js';
 
 export class AICompanionApp {
     constructor() {
         this.isInitialized = false;
+        this.init_retries = 0;
         this.modules = {
             particleSystem,
             audioManager,
@@ -25,6 +28,13 @@ export class AICompanionApp {
     async init() {
         try {
             logger.info('Initializing AI Companion Application...');
+            
+            // Check authentication first
+            if (!this.checkAuthentication()) {
+                logger.error('User not authenticated, redirecting to login');
+                window.location.href = '/static/login.html';
+                return;
+            }
             
             // Check system requirements
             if (!await audioManager.checkSystemRequirements()) {
@@ -43,6 +53,12 @@ export class AICompanionApp {
             // Initialize UI
             this.initializeUI();
             
+            // Initialize global functions for HTML onclick
+            this.initializeGlobalFunctions();
+
+            // Initialize companion
+            await this.initializeCompanion();
+            
             // Start the application
             await this.start();
             
@@ -53,6 +69,10 @@ export class AICompanionApp {
             logger.error(`Failed to initialize application: ${error.message}`);
             this.handleInitializationError(error);
         }
+    }
+
+    checkAuthentication() {
+        return isAuthenticated();
     }
 
     async initializeModules() {
@@ -139,22 +159,68 @@ export class AICompanionApp {
     }
 
     initializeUI() {
-
-        // Initialize canvas first
-        //if (!this.initCanvas()) {
-        //    throw new Error('Failed to initialize canvas');
-        //}
-
-        // Set initial theme
-        const savedTheme = localStorage.getItem(CONFIG.THEME.storageKey) || CONFIG.THEME.default;
-        stateManager.setTheme(savedTheme);
+        // Initialize theme
+        this.initializeTheme();
         
-        // Update initial UI state
-        this.updateUI();
+        // Update user display
+        this.updateUserDisplay();
+        
+        // Setup debug panel toggle
+        const debugToggle = document.querySelector('.debug-toggle');
+        if (debugToggle) {
+            debugToggle.addEventListener('click', () => this.toggleDebugPanel());
+        }
+        
+        // Setup keyboard shortcuts
+        document.addEventListener('keydown', (event) => this.handleKeyboardShortcuts(event));
         
         logger.info('UI initialized');
     }
 
+    initializeTheme() {
+        // Use the auth module function
+        initializeTheme();
+    }
+
+    async initializeCompanion() {
+        if (stateManager.companion.isInitialized) {
+            logger.info('Companion already initialized');
+            return;
+        }
+
+        // Create a new promise for this initialization
+        stateManager.companion.companionInitPromise = new Promise((resolve, reject) => {
+            stateManager.companion.companionInitResolve = resolve;
+            stateManager.companion.companionInitReject = reject;
+        });
+
+        //Send a message to the backend to create a companion
+        logger.info(`Sending message to create companion for user ${stateManager.user.name}`);
+        webSocketManager.sendMessage({
+            type: 'create_companion',
+            data: {
+                user_name: stateManager.user.name
+            }
+        });
+
+        // Wait for the companion to be initialized using a Promise
+        try {
+            await Promise.race([
+                stateManager.companion.companionInitPromise,
+                new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('Companion initialization timeout')), 10000)
+                )
+            ]);
+            return true;
+        } catch (error) {
+            // Clean up promise on error
+            stateManager.companion.companionInitResolve = null;
+            stateManager.companion.companionInitReject = null;
+            logger.error(`Companion initialization failed: ${error.message}`);
+            throw error;
+        }        
+        
+    }
     async start() {
         try {
             
@@ -218,22 +284,15 @@ export class AICompanionApp {
     }
 
     handleKeyboardShortcuts(event) {
-        // Ctrl/Cmd + Space: Toggle recognition
-        if ((event.ctrlKey || event.metaKey) && event.code === 'Space') {
+        // Handle global keyboard shortcuts
+        if (event.ctrlKey && event.key === 'Enter') {
             event.preventDefault();
-            this.toggleRecognition();
+            sendTextMessage();
         }
         
-        // Ctrl/Cmd + R: Restart recognition
-        if ((event.ctrlKey || event.metaKey) && event.code === 'KeyR') {
-            event.preventDefault();
-            this.restartRecognition();
-        }
-        
-        // Ctrl/Cmd + D: Toggle debug panel
-        if ((event.ctrlKey || event.metaKey) && event.code === 'KeyD') {
-            event.preventDefault();
-            this.toggleDebugPanel();
+        // Add other keyboard shortcuts as needed
+        if (event.key === 'Escape') {
+            hideTextInput();
         }
     }
 
@@ -281,6 +340,20 @@ export class AICompanionApp {
         
         // Show error in debug panel
         logger.error(`Application initialization failed: ${error.message}`);
+        // Clean up app and retry initialization if it fails
+        if (this.init_retries < 3) {
+            statusDiv.textContent = "Retrying initialization...";
+            this.init_retries++;
+            setTimeout(() => {
+                this.cleanup();
+                this.init();
+            }, 3000);
+        }
+        else {
+            logger.error('Application initialization failed after 3 retries');
+            this.cleanup();
+            statusDiv.textContent = "Initialization failed";
+        }
     }
 
     cleanup() {
@@ -290,6 +363,15 @@ export class AICompanionApp {
         particleSystem.stop();
         speechRecognition.cleanup();
         audioManager.cleanup();
+
+        // Resolve the promise if it exists
+        if (stateManager.companion.companionInitResolve) {
+            stateManager.companion.companionInitResolve(null);
+            stateManager.companion.companionInitResolve = null;
+            stateManager.companion.companionInitReject = null;
+        }
+
+
         webSocketManager.disconnect();
         
         // Reset state
@@ -320,9 +402,66 @@ export class AICompanionApp {
     resume() {
         speechRecognition.resumeRecognition();
     }
-}
 
-logger.info('Launching AI Companion...');
+
+     // Text input functions
+    initializeGlobalFunctions() {
+        // Make functions available globally for HTML onclick attributes
+        window.signOut = signOut;
+        window.toggleTheme = toggleTheme;
+        window.showTextInput = showTextInput;
+        window.hideTextInput = hideTextInput;
+        window.sendTextMessage = sendTextMessage;
+        window.copyDebugLog = copyDebugLog;
+        window.switchToVoiceMode = switchToVoiceMode;
+        window.switchToTextMode = switchToTextMode;
+        window.testTextInput = testTextInput; // For debugging
+        
+        // Setup text input listeners
+        setupTextInputListeners();
+        
+        // Initialize user display
+        this.updateUserDisplay();
+    }
+
+    updateUserDisplay() {
+        // Use the existing requireAuth function to handle user display
+        requireAuth();
+        
+        // Also check if header is visible
+        const headerElement = document.querySelector('.header');
+        if (headerElement) {
+            logger.info('Header element found');
+            // Ensure header is visible
+            headerElement.style.display = 'flex';
+            headerElement.style.visibility = 'visible';
+            headerElement.style.opacity = '1';
+            logger.info('Header visibility ensured');
+        } else {
+            logger.error('Header element not found');
+        }
+        
+        // Check user info element
+        const userInfoElement = document.querySelector('.user-info');
+        if (userInfoElement) {
+            logger.info('User info element found');
+            userInfoElement.style.display = 'flex';
+            userInfoElement.style.visibility = 'visible';
+        } else {
+            logger.error('User info element not found');
+        }
+        
+        // Check theme toggle
+        const themeToggleElement = document.querySelector('.theme-toggle');
+        if (themeToggleElement) {
+            logger.info('Theme toggle element found');
+            themeToggleElement.style.display = 'flex';
+            themeToggleElement.style.visibility = 'visible';
+        } else {
+            logger.error('Theme toggle element not found');
+        }
+    }
+}
 
 // Create and export singleton instance
 export const app = new AICompanionApp();
@@ -330,9 +469,31 @@ export const app = new AICompanionApp();
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', async () => {
     try {
+        console.log('DOM loaded, initializing application...');
+        logger.info('DOM loaded, initializing application...');
+        
+        // Set up global functions immediately for debugging
+        window.signOut = signOut;
+        window.toggleTheme = toggleTheme;
+        window.showTextInput = showTextInput;
+        window.hideTextInput = hideTextInput;
+        window.sendTextMessage = sendTextMessage;
+        window.copyDebugLog = copyDebugLog;
+        window.switchToVoiceMode = switchToVoiceMode;
+        window.switchToTextMode = switchToTextMode;
+        
+        console.log('Global functions set up:', {
+            signOut: typeof window.signOut,
+            toggleTheme: typeof window.toggleTheme,
+            showTextInput: typeof window.showTextInput,
+            switchToVoiceMode: typeof window.switchToVoiceMode,
+            switchToTextMode: typeof window.switchToTextMode
+        });
+        
         await app.init();
     } catch (error) {
         console.error('Failed to initialize application:', error);
+        logger.error('Application initialization failed:', error);
     }
 });
 

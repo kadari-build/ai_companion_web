@@ -23,7 +23,7 @@ export class AudioManager {
         } catch (err) {
             logger.error('Error initializing audio: ' + err.message);
             this.setupFallbackAudio();
-            throw err;
+            //throw err;
         }
     }
 
@@ -131,7 +131,7 @@ export class AudioManager {
         logger.info('All audio finished, checking for more responses');
         
         // Mark response as processed
-        stateManager.setAgentsState({ isProcessingResponse: false });
+        stateManager.setCompanionState({ isProcessingResponse: false });
         
         if (stateManager.hasResponses()) {
             setTimeout(() => {

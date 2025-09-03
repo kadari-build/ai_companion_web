@@ -77,6 +77,8 @@ export class SpeechRecognitionManager {
                 this.handleNoSpeech();
             } else if (event.error === 'network') {
                 this.handleNetworkError();
+            } else if (event.error === 'not-allowed' || event.error === 'audio-capture') {
+                this.handleAudioDeviceError();
             } else {
                 this.handleGenericError(event.error);
             }
@@ -222,8 +224,22 @@ export class SpeechRecognitionManager {
             this.restartRecognition();
         }, 3000);
     }
+    
+    handleAudioDeviceError() {
+        logger.error('Audio device not available or permission denied');
+        this.updateUI('Audio device not available');
+        
+        // Show the audio error fallback
+        const audioErrorFallback = document.getElementById('audioErrorFallback');
+        if (audioErrorFallback) {
+            audioErrorFallback.style.display = 'block';
+        }
+        
+        stateManager.setRecognitionState({ isRunning: false });
+    }
 
     sendTranscript(transcript) {
+        // This function is called when the user speaks and the transcript is ready to be sent to the server
         const message = {
             type: 'user_message',
             content: transcript,
