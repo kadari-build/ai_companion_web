@@ -9,10 +9,9 @@ from pydantic import BaseModel
 from typing import List, Dict, Any
 import uuid
 import json
-#from companions import Companions, create_companions
 from companion import CompanionManager
 import asyncio
-import whisper
+#import whisper
 import logging
 from pathlib import Path
 import os
@@ -122,28 +121,29 @@ logger = logging.getLogger(__name__)
 
 
 # Whisper transcription function
-async def whisper_transcribe(audio_data: bytes) -> str:
-    """Transcribe audio data using Whisper"""
-    try:
-        # Load the Whisper model (you might want to cache this)
-        model = whisper.load_model("base")
+# Commenting out for now as it is not needed for the web socket connection
+# async def whisper_transcribe(audio_data: bytes) -> str:
+#     """Transcribe audio data using Whisper"""
+#     try:
+#         # Load the Whisper model (you might want to cache this)
+#         model = whisper.load_model("base")
         
-        # Save audio data to a temporary file
-        temp_file = "temp_audio.wav"
-        with open(temp_file, "wb") as f:
-            f.write(audio_data)
+#         # Save audio data to a temporary file
+#         temp_file = "temp_audio.wav"
+#         with open(temp_file, "wb") as f:
+#             f.write(audio_data)
         
-        # Transcribe the audio
-        result = model.transcribe(temp_file)
+#         # Transcribe the audio
+#         result = model.transcribe(temp_file)
         
-        # Clean up temporary file
-        if os.path.exists(temp_file):
-            os.remove(temp_file)
+#         # Clean up temporary file
+#         if os.path.exists(temp_file):
+#             os.remove(temp_file)
         
-        return result["text"]
-    except Exception as e:
-        logger.error(f"Error transcribing audio: {e}")
-        return "Sorry, I couldn't understand that audio."
+#         return result["text"]
+#     except Exception as e:
+#         logger.error(f"Error transcribing audio: {e}")
+#         return "Sorry, I couldn't understand that audio."
 
 # Text-to-speech function
 async def text_to_speech(text: str) -> str:
@@ -218,15 +218,17 @@ class ConnectionManager:
                 logger.error(f"Error sending message to client {client_id}: {e}")
                 #TODO: Send error message or nack message to client and maybe disconnect
                 #await self.disconnect(client_id)
-
-    async def process_audio(self, websocket: WebSocket, audio_data: bytes):
-        # Your Whisper processing here
-        # Much faster with async
-        transcription = await whisper_transcribe(audio_data)
-        await websocket.send_json({
-            "type": "transcription",
-            "text": transcription
-        })
+    
+    # Audio processing using Whisper
+    # Commenting out for now as it is not needed for the web socket connection
+    # async def process_audio(self, websocket: WebSocket, audio_data: bytes):
+    #     # Your Whisper processing here
+    #     # Much faster with async
+    #     transcription = await whisper_transcribe(audio_data)
+    #     await websocket.send_json({
+    #         "type": "transcription",
+    #         "text": transcription
+    #     })
 
 
 manager = ConnectionManager()
@@ -258,72 +260,6 @@ async def root():
 @app.get("/companions")
 async def get_companions():
     return companions.get_companion_status()
-
-@app.post("/chat")
-async def chat(
-    message: Message,
-    current_user: Dict[str, Any] = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """Protected chat endpoint that requires authentication"""
-    try:
-        # Get user context from database
-        user_context_data = db.query(UserContext).filter(
-            UserContext.user_id == current_user["user_id"],
-            UserContext.context_type == "conversation_history"
-        ).first()
-        
-        # Add user context to the message
-        context_prompt = ""
-        if user_context_data:
-            recent_conversations = user_context_data.context_data.get("recent_messages", [])
-            if recent_conversations:
-                context_prompt = f"User context: {current_user['user_name']}. Recent conversations: {' '.join(recent_conversations[-5:])}\n\n"
-        
-        enhanced_message = context_prompt + message.content
-        response = await companions.process_message(enhanced_message)
-        
-        # Save conversation to database
-        response_text = response.get("messages", str(response))[-1].content
-        conversation = Conversation(
-            user_id=current_user["user_id"],
-            session_id="http_chat",
-            user_message=message.content,
-            ai_response=response_text,
-            companion_name=response.get("companion", "assistant")
-        )
-        db.add(conversation)
-        
-        # Update user context
-        if user_context_data:
-            recent_messages = user_context_data.context_data.get("recent_messages", [])
-            recent_messages.append(f"User: {message.content}")
-            recent_messages.append(f"AI: {response_text}")
-            recent_messages = recent_messages[-10:]  # Keep only last 10
-            user_context_data.context_data["recent_messages"] = recent_messages
-        else:
-            # Create new context
-            new_context = UserContext(
-                user_id=current_user["user_id"],
-                context_type="conversation_history",
-                context_data={
-                    "recent_messages": [
-                        f"User: {message.content}",
-                        f"AI: {response_text}"
-                    ]
-                }
-            )
-            db.add(new_context)
-        
-        db.commit()
-        
-        return {
-            "response": response,
-            "status": "success",
-            "user_id": current_user["user_id"]
-        }
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
 
 @app.websocket("/ws/{client_id}")
 async def websocket_endpoint(websocket: WebSocket, client_id: str):

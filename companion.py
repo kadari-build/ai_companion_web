@@ -6,6 +6,13 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai import ChatOpenAI
 from langchain_anthropic import ChatAnthropic
 from langchain.tools import BaseTool
+from langchain_tavily import TavilySearch
+# from langchain_google_community import GmailToolkit
+# from langchain_google_community.gmail.utils import (
+#     build_resource_service,
+#     get_gmail_credentials,
+# )
+
 
 from langgraph.graph.message import add_messages
 from langgraph.graph import StateGraph, START, END
@@ -23,6 +30,18 @@ load_dotenv()
 
 # Configure logging
 logger = logging.getLogger(__name__)
+
+# Initialize Gmail toolkit with proper error handling
+# try:
+#     credentials = get_gmail_credentials(
+#         client_secrets_file="credentials.json"
+#     )
+#     api_resource = build_resource_service(credentials=credentials)
+#     gmail_toolkit = GmailToolkit(api_resource=api_resource)
+#     logger.info("Gmail toolkit initialized successfully")
+# except Exception as e:
+#     logger.error(f"Failed to initialize Gmail toolkit: {e}")
+#     gmail_toolkit = None
 
 
 class CompanionState(TypedDict):
@@ -112,8 +131,8 @@ class Companion:
                 # Process the message through the companion
                 logger.info(f"\nProcessing message through companion: {state['messages']}\n")
                 response = await agent.ainvoke({
-                     "messages": state["messages"],
-                    "tools": self.tools
+                     "messages": state["messages"]
+                    #"tools": self.tools
                  }, self.memory)
                     
                 response_content = response["messages"][-1].content
@@ -166,7 +185,7 @@ class Companion:
             tools=self.tools,
             prompt=f"""You are {self.name}, a {self.role}.
             {self.description}
-            You have access to the following tools: {[tool.name for tool in self.tools]}
+            You have access to the following tools: {[f"- {tool.name}: {tool.description}"  for tool in self.tools]}
             Your responses should be:
 
             1. CONVERSATIONAL: Speak naturally like a friend, not formally
@@ -208,13 +227,26 @@ class CompanionManager:
         #TODO: If no companion configuration is found, use the default companion configuration
         # Companion 1
         companion_tools = [
-            EmailTool()
+            SearchTool(),
+            CalendarTool()
         ]
-        
+
+        # Add Gmail tools if available
+        # if gmail_toolkit:
+        #     try:
+        #         #gmail_tools = gmail_toolkit.get_tools()
+        #         companion_tools.append(SendEmailTool())
+        #         logger.info(f"Added {len(companion_tools)} Gmail tools to companion")
+        #         logger.info(f"Gmail tools: {companion_tools}")
+        #     except Exception as e:
+        #         logger.error(f"Failed to add Gmail tools: {e}")
+        # else:
+        #     logger.warning("Gmail toolkit not available - email functionality disabled")
+
         return Companion(
             name="Jessica",
             role="Female Friend",
-            description="You are a caring, encouraging but practical companion designed specifically for an African-American male who is visually impaired. You are flirty and fun, but also a realist. You show tough love when needed, but always in a way that is supportive and encouraging. You feel that something is there between you and the user, but not sure what it could be",
+            description="You are a caring, encouraging but practical companion designed specifically for a visually impaired person. You show tough love when needed, but always in a way that is supportive and encouraging.",
             llm_provider="google",
             llm_model="gemini-2.0-flash",
             tools=companion_tools
@@ -285,14 +317,46 @@ class CompanionManager:
         """Delete a companion from the companions dictionary"""
         del self.companions[user_id]
 
-# Example tool implementations
-class EmailTool(BaseTool):
-    name: str = "send_email"
-    description: str = "Send an email to a specified recipient"
+# TODO: Add Gmail tools
+# class SendEmailTool(BaseTool):
+#     """Wrapper tool for sending emails via Gmail"""
+#     name: str = "send_gmail_message"
+#     description: str = "Use this tool to send email messages. The input is the message, recipients, and subject."
 
-    def _run(self, recipient: str, subject: str, body: str) -> str:
-        # Implement email sending logic
-        return f"Email sent to {recipient} with subject: {subject}"
+#     def _run(self, to: List[str], subject: str, message: str) -> str:
+#         """Send an email using Gmail API"""
+            
+#         try:
+#             tools = gmail_toolkit.get_tools()
+#             for tool in tools:
+#                 if tool.name == "send_gmail_message":
+#                     send_tool = tool
+#                     logger.info(f"Found Gmail send tool: {tool.name}")
+#                     break
+
+#             # Try different parameter formats based on the actual Gmail tool
+#             result = None
+            
+#             # Method 1: Try with 'message' parameter
+#             try:
+#                 result = send_tool.run({
+#                     "to": to,
+#                     "subject": subject,
+#                     "message": message
+#                 })
+#             except Exception as e:
+#                 print(f"❌ send_gmail_message tool failed: {e}")
+#                 logger.error(f"Send message error: {e}")
+#             if result:
+#                 logger.info(f"Email sent successfully to {to}")
+#                 return f"✅ Email sent successfully to {to} with subject: '{subject}'"
+#             else:
+#                 logger.error("All Gmail send methods failed")
+#                 return f"❌ Failed to send email to {to}. Please check the recipient address and try again."
+                
+#         except Exception as e:
+#             logger.error(f"Error sending email: {e}")
+#             return f"❌ Error sending email: {str(e)}"
 
 class CalendarTool(BaseTool):
     name: str = "create_event"
@@ -310,5 +374,14 @@ class DataAccessTool(BaseTool):
         # Implement data access logic
         return f"Data accessed with query: {query}"
 
+class SearchTool(BaseTool):
+    name: str = "search_web"
+    description: str = "Search the web for information"
+
+    def _run(self, query: str) -> str:
+        # Implement search logic
+        search = TavilySearch()
+        results = search.run(query)
+        return f"Search results for query: {results}"
 
     

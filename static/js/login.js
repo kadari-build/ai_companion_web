@@ -1,11 +1,16 @@
 /**
  * Login Page JavaScript
- * Handles authentication, registration, and form management
+ * Handles manual login and registration forms
+ * Voice input functionality is disabled but code is preserved for future use
  */
 
 import { CONFIG } from './config/settings.js';
 import { logger } from './utils/logger.js';
 import { checkAuthStatus } from './utils/auth.js';
+import { VoiceLoginManager } from './modules/VoiceLogin.js';
+
+// Initialize voice login manager (disabled for now)
+const voiceLoginManager = new VoiceLoginManager();
 
 // Form management
 function toggleForm(formType) {
@@ -15,15 +20,102 @@ function toggleForm(formType) {
     if (formType === 'register') {
         loginForm.classList.remove('active');
         registerForm.classList.add('active');
+        // Update voice manager context for registration (disabled)
+        // voiceLoginManager.setFormContext('register');
     } else {
         registerForm.classList.remove('active');
         loginForm.classList.add('active');
+        // Update voice manager context for login (disabled)
+        // voiceLoginManager.setFormContext('login');
     }
     
     // Clear error messages
     document.getElementById('loginError').textContent = '';
     document.getElementById('registerError').textContent = '';
     document.getElementById('registerSuccess').textContent = '';
+    
+    // Reset voice conversation when switching forms (disabled)
+    // voiceLoginManager.resetConversation();
+}
+
+// Voice login setup (disabled for now)
+function setupVoiceLogin() {
+    // Voice input is currently disabled for security and functionality reasons
+    // All voice-related code is preserved but not initialized
+    logger.info('Voice login is disabled - using manual login only');
+    
+    // Uncomment the following lines to re-enable voice input in the future:
+    /*
+    if (!voiceLoginManager.init()) {
+        logger.warn('Voice login not available, showing manual login only');
+        disableVoiceInput();
+        return;
+    }
+
+    // Setup voice toggle button
+    setupVoiceToggle();
+    
+    // Set initial form context
+    voiceLoginManager.setFormContext('login');
+    
+    logger.info('Voice login setup completed');
+    */
+}
+
+// Setup voice toggle button (disabled for now)
+function setupVoiceToggle() {
+    // Voice toggle functionality is disabled
+    // Code preserved for future use
+    /*
+    const voiceToggleBtn = document.getElementById('voiceToggleBtn');
+    if (!voiceToggleBtn) return;
+
+    voiceToggleBtn.addEventListener('click', () => {
+        voiceLoginManager.toggleVoiceInput();
+        updateVoiceToggleButton();
+    });
+
+    // Initial button state
+    updateVoiceToggleButton();
+    */
+}
+
+// Update voice toggle button appearance (disabled for now)
+function updateVoiceToggleButton() {
+    // Voice toggle button updates are disabled
+    // Code preserved for future use
+    /*
+    const voiceToggleBtn = document.getElementById('voiceToggleBtn');
+    if (!voiceToggleBtn) return;
+
+    const toggleText = voiceToggleBtn.querySelector('.toggle-text');
+    const isEnabled = voiceLoginManager.isVoiceInputEnabled();
+
+    if (isEnabled) {
+        voiceToggleBtn.classList.remove('voice-disabled');
+        toggleText.textContent = 'Voice Input: ON';
+        voiceToggleBtn.title = 'Click to disable voice input';
+    } else {
+        voiceToggleBtn.classList.add('voice-disabled');
+        toggleText.textContent = 'Voice Input: OFF';
+        voiceToggleBtn.title = 'Click to enable voice input';
+    }
+    */
+}
+
+// Disable voice input (fallback for unsupported browsers)
+function disableVoiceInput() {
+    // Voice input is disabled by default
+    // Code preserved for future use
+    /*
+    const voiceToggleBtn = document.getElementById('voiceToggleBtn');
+    if (voiceToggleBtn) {
+        voiceToggleBtn.classList.add('voice-disabled');
+        voiceToggleBtn.disabled = true;
+        voiceToggleBtn.querySelector('.toggle-text').textContent = 'Voice Input: Unavailable';
+        voiceToggleBtn.title = 'Voice input not supported in this browser';
+    }
+    */
 }
 
 // Authentication functions
@@ -98,7 +190,7 @@ function setupLoginForm() {
         const errorDiv = document.getElementById('loginError');
         
         loginBtn.disabled = true;
-        loginBtn.textContent = 'Logging in...';
+        loginBtn.classList.add('loading');
         errorDiv.textContent = '';
         
         try {
@@ -107,7 +199,7 @@ function setupLoginForm() {
             errorDiv.textContent = error.message;
         } finally {
             loginBtn.disabled = false;
-            loginBtn.textContent = 'Login';
+            loginBtn.classList.remove('loading');
         }
     });
 }
@@ -124,7 +216,7 @@ function setupRegisterForm() {
         const successDiv = document.getElementById('registerSuccess');
         
         registerBtn.disabled = true;
-        registerBtn.textContent = 'Registering...';
+        registerBtn.classList.add('loading');
         errorDiv.textContent = '';
         successDiv.textContent = '';
         
@@ -142,9 +234,43 @@ function setupRegisterForm() {
             errorDiv.textContent = error.message;
         } finally {
             registerBtn.disabled = false;
-            registerBtn.textContent = 'Register';
+            registerBtn.classList.remove('loading');
         }
     });
+}
+
+// Setup conversation state monitoring (disabled for now)
+function setupConversationMonitoring() {
+    // Voice conversation monitoring is disabled
+    // Code preserved for future use
+    /*
+    // Monitor conversation state changes
+    setInterval(() => {
+        const state = voiceLoginManager.getConversationState();
+        const isVoiceEnabled = voiceLoginManager.isVoiceInputEnabled();
+        const isInSleepMode = voiceLoginManager.isInSleepModeState();
+        
+        // Update voice toggle button
+        updateVoiceToggleButton();
+        
+        // Update conversation progress
+        voiceLoginManager.updateConversationProgress();
+        
+        // Update voice status based on current state
+        if (isInSleepMode) {
+            voiceLoginManager.updateUIState('sleep');
+        } else if (!isVoiceEnabled) {
+            voiceLoginManager.updateUIState('manual');
+        } else if (state === 'completed') {
+            voiceLoginManager.updateUIState('success');
+            // Reset after a delay
+            setTimeout(() => {
+                voiceLoginManager.resetConversation();
+            }, 3000);
+        }
+        
+    }, 500);
+    */
 }
 
 // Initialize when DOM is loaded
@@ -152,6 +278,12 @@ document.addEventListener('DOMContentLoaded', () => {
     checkAuthStatus();
     setupLoginForm();
     setupRegisterForm();
+    //setupVoiceLogin(); // Disabled but function call preserved
+    //setupConversationMonitoring(); // Disabled but function call preserved
+    
+    // Voice input availability check is disabled
+    // logger.info('Voice login is available and ready to use');
+    logger.info('Manual login/registration is active - voice input is disabled');
 });
 
 // Make functions globally available for onclick handlers

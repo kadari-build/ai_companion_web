@@ -47,7 +47,7 @@ export const CONFIG = {
     COMPANIONS: {
         'assistant': {
             color: { hue: 220, saturation: 80, brightness: 60 },
-            position: 0.3
+            position: 0.5
         }
     },
     

@@ -1,6 +1,8 @@
+#AI/LLM
 langchain_openai
 langchain_anthropic
 langchain_google_genai
+langchain-tavily
 pydantic
 langgraph
 langchain
@@ -14,6 +16,8 @@ gtts
 python-dotenv
 ipython
 pydantic[email]
+langchain-google-community[gmail]
+
 # Database dependencies
 sqlalchemy
 psycopg2
