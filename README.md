@@ -14,7 +14,7 @@ A sophisticated web-based AI conversation companion with advanced voice capabili
 - **LangChain integration** for advanced AI workflows
 - **Gmail integration Hooks** for email processing capabilities
 
-<img width="2554" height="1263" alt="AI Companion Demo" src="https://github.com/user-attachments/assets/d96ff71d-2b83-4ae2-bf7a-674891d98444" />
+https://github.com/user-attachments/assets/d93b30d4-017c-4f06-aeb0-7443333e74e0
 
 ### Technical Features
 - **FastAPI backend** with async support
