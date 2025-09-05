@@ -6,10 +6,11 @@
 import { CONFIG } from './config/settings.js';
 import { logger } from './utils/logger.js';
 import { stateManager } from './utils/stateManager.js';
-import { particleSystem } from './modules/ParticleSystem.js';
+import { particleCloudVisualizer } from './modules/ParticleCloudVisualizer.js';
 import { audioManager } from './modules/AudioManager.js';
 import { speechRecognition } from './modules/SpeechRecognition.js';
 import { webSocketManager } from './modules/WebSocketManager.js';
+import { settingsManager } from './modules/SettingsManager.js';
 import { signOut, isAuthenticated, requireAuth, toggleTheme, initializeTheme, copyDebugLog } from './utils/auth.js';
 import { showTextInput, hideTextInput, sendTextMessage, setupTextInputListeners, switchToVoiceMode, switchToTextMode, testTextInput } from './utils/ui.js';
 
@@ -18,16 +19,19 @@ export class AICompanionApp {
         this.isInitialized = false;
         this.init_retries = 0;
         this.modules = {
-            particleSystem,
+            particleCloudVisualizer,
             audioManager,
             speechRecognition,
-            webSocketManager
+            webSocketManager,
+            settingsManager
         };
+        
     }
 
     async init() {
         try {
             logger.info('Initializing AI Companion Application...');
+            
             
             // Check authentication first
             if (!this.checkAuthentication()) {
@@ -83,9 +87,9 @@ export class AICompanionApp {
         // Setup WebSocket listeners
         webSocketManager.setupStateListeners();
 
-        // Initialize particle system
-        if (!particleSystem.init()) {
-            throw new Error('Failed to initialize particle system');
+        // Initialize particle cloud visualizer
+        if (!particleCloudVisualizer.init()) {
+            throw new Error('Failed to initialize particle cloud visualizer');
         }
         
         // Initialize audio manager
@@ -95,6 +99,10 @@ export class AICompanionApp {
         if (!speechRecognition.init()) {
             throw new Error('Failed to initialize speech recognition');
         }
+        // Initialize settings manager with speech recognition as dependency
+        if (!settingsManager.init(speechRecognition)) {
+            throw new Error('Failed to initialize settings manager');
+        }
     
         
         logger.info('All modules initialized');
@@ -103,7 +111,7 @@ export class AICompanionApp {
     setupEventListeners() {
         // Window resize
         window.addEventListener('resize', () => {
-            particleSystem.onWindowResize();
+            particleCloudVisualizer.onWindowResize();
         });
 
         // Page visibility change
@@ -171,10 +179,39 @@ export class AICompanionApp {
             debugToggle.addEventListener('click', () => this.toggleDebugPanel());
         }
         
+        // Setup settings button event listeners
+        this.setupSettingsButtonListeners();
+        
         // Setup keyboard shortcuts
         document.addEventListener('keydown', (event) => this.handleKeyboardShortcuts(event));
         
         logger.info('UI initialized');
+    }
+
+    setupSettingsButtonListeners() {
+        // Settings button
+        const settingsBtn = document.getElementById('settingsBtn');
+        if (settingsBtn) {
+            settingsBtn.addEventListener('click', () => {
+                settingsManager.openGeneralSettings();
+            });
+        }
+
+        // Agent settings button
+        const agentSettingsBtn = document.getElementById('agentSettingsBtn');
+        if (agentSettingsBtn) {
+            agentSettingsBtn.addEventListener('click', () => {
+                settingsManager.openAgentSettings();
+            });
+        }
+
+        // User settings button
+        const userSettingsBtn = document.getElementById('userSettingsBtn');
+        if (userSettingsBtn) {
+            userSettingsBtn.addEventListener('click', () => {
+                settingsManager.openUserSettings();
+            });
+        }
     }
 
     initializeTheme() {
@@ -224,8 +261,8 @@ export class AICompanionApp {
     async start() {
         try {
             
-            // Start particle system
-            particleSystem.start();
+            // Start particle cloud visualizer
+            particleCloudVisualizer.start();
             
             // Start speech recognition
             speechRecognition.start();
@@ -360,9 +397,10 @@ export class AICompanionApp {
         logger.info('Cleaning up application...');
         
         // Stop all modules
-        particleSystem.stop();
+        particleCloudVisualizer.stop();
         speechRecognition.cleanup();
         audioManager.cleanup();
+        settingsManager.cleanup();
 
         // Resolve the promise if it exists
         if (stateManager.companion.companionInitResolve) {
@@ -482,13 +520,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.switchToVoiceMode = switchToVoiceMode;
         window.switchToTextMode = switchToTextMode;
         
-        console.log('Global functions set up:', {
-            signOut: typeof window.signOut,
-            toggleTheme: typeof window.toggleTheme,
-            showTextInput: typeof window.showTextInput,
-            switchToVoiceMode: typeof window.switchToVoiceMode,
-            switchToTextMode: typeof window.switchToTextMode
-        });
+        // console.log('Global functions set up:', {
+        //     signOut: typeof window.signOut,
+        //     toggleTheme: typeof window.toggleTheme,
+        //     showTextInput: typeof window.showTextInput,
+        //     switchToVoiceMode: typeof window.switchToVoiceMode,
+        //     switchToTextMode: typeof window.switchToTextMode
+        // });
         
         await app.init();
     } catch (error) {

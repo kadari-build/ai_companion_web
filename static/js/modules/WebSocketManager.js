@@ -26,7 +26,7 @@ export class WebSocketManager {
         
         try {
             const clientId = this.generateClientId();
-            logger.info(`Client ID: ${clientId}`);           
+            //logger.info(`Client ID: ${clientId}`);           
 
             // Set the client ID in the state manager
             stateManager.websocket.clientId = clientId;
@@ -411,7 +411,7 @@ export class WebSocketManager {
                 
                 this.connection.send(JSON.stringify(authenticatedMessage));
                 logger.info(`Sent message: ${message.type}`);
-                logger.info(`Sent message: ${JSON.stringify(authenticatedMessage)}`);
+                //logger.info(`Sent message: ${JSON.stringify(authenticatedMessage)}`);
                 return true;
             } catch (error) {
                 logger.error(`Error sending message: ${error.message}`);

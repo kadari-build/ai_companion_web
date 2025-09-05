@@ -12,6 +12,7 @@ export class SpeechRecognitionManager {
         this.recognition = null;
         this.isInitialized = false;
         this.recognitionStartAttempted = false;
+        this.voiceCommandHandlers = [];
     }
 
     init() {
@@ -180,12 +181,28 @@ export class SpeechRecognitionManager {
         }, 100);
     }
 
+    refreshRecognition() {
+        this.stop();
+        setTimeout(() => {
+            this.start();
+        }, 200);
+    }
+
     handleFinalResult(transcript) {
         if (!transcript.trim()) {
             logger.warn('Empty transcript received');
             return;
         }
 
+        // Check for voice commands first
+        if (this.handleVoiceCommands(transcript)) {
+            logger.info(`Voice command handled: "${transcript}"`);
+            //Resume recognition
+            this.refreshRecognition();
+            return;
+        }
+
+        logger.info('Stopping recognition while processing');
         // Stop recognition while processing
         this.stop();
         
@@ -269,6 +286,28 @@ export class SpeechRecognitionManager {
         if (indicator) {
             indicator.style.display = isListening ? 'block' : 'none';
         }
+    }
+
+    // Voice command handling
+    addVoiceCommandHandler(handler) {
+        this.voiceCommandHandlers.push(handler);
+        logger.info('Voice command handler added');
+    }
+
+    handleVoiceCommands(transcript) {
+        const lowerTranscript = transcript.toLowerCase();
+        
+        for (const handler of this.voiceCommandHandlers) {
+            try {
+                if (handler(lowerTranscript)) {
+                    return true;
+                }
+            } catch (error) {
+                logger.error(`Error in voice command handler: ${error.message}`);
+            }
+        }
+        
+        return false;
     }
 
     // Public methods for external control
