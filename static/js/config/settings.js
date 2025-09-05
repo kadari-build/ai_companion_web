@@ -36,11 +36,13 @@ export const CONFIG = {
     
     // Particle system settings
     PARTICLES: {
-        count: 50,
-        maxDistance: 100,
+        count: 100,
+        maxDistance: 120,
         baseRadius: { min: 3, max: 5 },
         velocity: { min: 0.005, max: 0.015 },
-        distance: { min: 60, max: 180 }
+        distance: { min: 60, max: 180 },
+        pulseIntensity: 1,
+        connectionDistance: 120
     },
     
     // Companion configurations

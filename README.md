@@ -22,6 +22,14 @@ A sophisticated web-based AI conversation companion with advanced voice capabili
 - **Voice processing** with Whisper for speech recognition
 - **Text-to-speech** with gTTS and pyttsx3
 
+### User Interface Features
+- **🎨 Modern HUD-style settings overlays** with glassmorphism design
+- **🎛️ Centralized settings management** with three specialized overlays
+- **🎤 Voice-controlled settings** with context-aware command routing
+- **📱 Responsive design** optimized for desktop, tablet, and mobile
+- **♿ Accessibility features** with keyboard navigation and screen reader support
+- **🎯 Non-intrusive UI** that doesn't dominate the screen
+
 ## 📋 Prerequisites
 
 - **Python 3.8+**
@@ -132,14 +140,111 @@ ai_companion_web/
 ├── .gitignore           # Git ignore rules
 ├── static/              # Frontend assets
 │   ├── js/             # JavaScript modules
+│   │   ├── modules/    # Modular JavaScript components
+│   │   │   ├── SettingsManager.js      # Centralized settings coordinator
+│   │   │   ├── SettingsOverlay.js      # General settings overlay
+│   │   │   ├── AgentSettingsOverlay.js # Agent-specific settings
+│   │   │   ├── UserSettingsOverlay.js  # User-specific settings
+│   │   │   └── SpeechRecognition.js    # Voice command handling
+│   │   └── app.js       # Main application logic
 │   ├── home.html       # Main application page
 │   ├── login.html      # Login page
-│   └── companion.css   # Stylesheets
+│   ├── companion.css   # Stylesheets with HUD design
+│   └── settings-test.html # Settings testing page
 └── docs/               # Documentation
     ├── AUTHENTICATION_README.md
     ├── VOICE_LOGIN_README.md
-    └── APP_FLOW_DIAGRAM.md
+    ├── APP_FLOW_DIAGRAM.md
+    └── SETTINGS_OVERLAY_README.md
 ```
+
+## ⚙️ Settings System
+
+The AI Companion features a sophisticated, modern settings management system with three specialized overlays and voice control capabilities.
+
+### 🎨 Modern HUD Design
+
+The settings overlays feature a beautiful glassmorphism design that:
+- **🪟 Semi-transparent panels** with backdrop blur effects
+- **📱 Compact 420px width** that doesn't dominate the screen
+- **🎯 Color-coded overlays** for easy identification
+- **📱 Responsive design** optimized for all devices
+- **✨ Smooth animations** with elegant transitions
+
+### 🎛️ Three Settings Overlays
+
+#### 1. **General Settings** (⚙️)
+- **User Profile**: Display name, email, account information
+- **Audio Settings**: Volume, speech speed, echo cancellation
+- **Theme Settings**: Light, Dark, Auto theme options
+- **Accessibility**: Screen reader support, keyboard navigation
+- **Voice Commands Help**: Available voice commands reference
+
+#### 2. **Agent Settings** (🤖)
+- **Agent Personality**: Friendly, Professional, Casual, Creative
+- **Response Length**: Short, Medium, Long configurations
+- **Conversation Style**: Formal, Informal, Technical, Creative
+- **Response Preferences**: Detailed, Concise, Balanced
+
+#### 3. **User Settings** (👤)
+- **User Profile**: Personal information and preferences
+- **Audio Preferences**: Volume, speech settings, audio quality
+- **Theme Customization**: Theme selection and appearance
+- **Accessibility Options**: Screen reader, keyboard shortcuts
+- **Privacy Settings**: Data handling and sharing preferences
+
+### 🎤 Voice Commands
+
+The settings system supports comprehensive voice control:
+
+#### Universal Commands
+- `"Settings"` or `"Settings menu"` → Opens General Settings
+- `"Close settings"` or `"Close menu"` → Closes current overlay
+- `"Agent settings"` or `"Agent menu"` → Opens Agent Settings
+- `"User settings"` or `"User menu"` → Opens User Settings
+
+#### Navigation Commands
+- `"User profile"` → Opens User Settings + scrolls to profile
+- `"Audio settings"` → Opens User Settings + scrolls to audio
+- `"Theme settings"` → Opens User Settings + scrolls to theme
+- `"Change personality"` → Opens Agent Settings + scrolls to personality
+- `"Response length"` → Opens Agent Settings + scrolls to response settings
+
+#### Future Voice-Controlled Settings
+The architecture supports direct setting modification:
+- `"Set agent personality to friendly"`
+- `"Change theme to dark"`
+- `"Increase volume to 80%"`
+- `"Enable noise suppression"`
+
+### 🏗️ Technical Architecture
+
+#### Centralized Management
+- **SettingsManager**: Single coordinator for all overlays
+- **Context-aware routing**: Knows which overlay is currently open
+- **Conflict-free voice commands**: No handler conflicts
+- **Automatic overlay management**: Closes previous when opening new
+
+#### Key Features
+- **💾 Persistent storage**: Settings saved to localStorage
+- **🎯 Dependency injection**: Clean module initialization
+- **🎙️ Event-driven**: Uses event listeners instead of onclick
+- **♿ Accessibility**: ARIA labels and keyboard navigation
+- **📱 Responsive**: Mobile-first design approach
+
+### 🧪 Testing
+
+#### Manual Testing
+1. **Open Application**: Navigate to the main page
+2. **Test Buttons**: Click each of the three settings buttons
+3. **Test Voice Commands**: Try all voice commands
+4. **Test Navigation**: Use voice commands to navigate between sections
+5. **Test Persistence**: Close and reopen to verify settings are saved
+
+#### Test Page
+Visit `/static/settings-test.html` for a standalone test environment.
+
+For detailed information, see [Settings Overlay Documentation](SETTINGS_OVERLAY_README.md).
 
 ## 🔧 Configuration
 
@@ -198,6 +303,7 @@ python app.py
 - [Authentication Guide](AUTHENTICATION_README.md) - Detailed authentication setup
 - [Voice Login Guide](VOICE_LOGIN_README.md) - Voice interaction features
 - [App Flow Diagram](APP_FLOW_DIAGRAM.md) - Application architecture
+- [Settings Overlay System](SETTINGS_OVERLAY_README.md) - Modern HUD-style settings management
 
 ## 🤝 Contributing
 
@@ -221,8 +327,16 @@ For support and questions:
 
 ## 🔄 Version History
 
+- **v1.1.0** - Settings Overlay System
+  - Modern HUD-style settings overlays with glassmorphism design
+  - Centralized SettingsManager with three specialized overlays
+  - Voice-controlled settings with context-aware command routing
+  - Responsive design optimized for all devices
+  - Persistent settings storage with localStorage
+  - Comprehensive voice command support
+
 - **v1.0.0** - Initial release with core AI companion functionality
-- Voice login and authentication
-- Real-time WebSocket communication
-- Database integration
-- Multi-model AI support
+  - Voice login and authentication
+  - Real-time WebSocket communication
+  - Database integration
+  - Multi-model AI support

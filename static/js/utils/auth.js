@@ -7,6 +7,9 @@ export function signOut() {
     console.log('signOut function called');
     logger.info('Sign out function called');
 
+    const audio = new Audio('/static/media/logout.mp3');
+    audio.play();
+
     // Close all websocket connections
     webSocketManager.disconnect();
     
@@ -34,14 +37,13 @@ export function signOut() {
         localStorage.removeItem('session_token');
         localStorage.removeItem('user_name');
         
-        // Redirect to login
-        //window.location.replace('/static/login.html');
+        updateUI('Signing out...');
 
         console.log("About to redirect to: /static/login.html");
 
         setTimeout(() => {
             window.location.replace('/static/login.html');
-        }, 5000); // 5 second delay
+        }, 2000); // 5 second delay
     });
 }
 
@@ -50,7 +52,7 @@ export function isAuthenticated() {
     const sessionToken = localStorage.getItem('session_token');
     const userName = localStorage.getItem('user_name');
     
-    logger.info(`Checking authentication - Session token: ${sessionToken ? 'Present' : 'Missing'}, User name: ${userName || 'Not set'}`);
+    //logger.info(`Checking authentication - Session token: ${sessionToken ? 'Present' : 'Missing'}, User name: ${userName || 'Not set'}`);
     
     if (!sessionToken) {
         logger.error('No session token found');
@@ -162,3 +164,9 @@ export function copyDebugLog() {
     }
 }
 
+export function updateUI(status) {
+    const statusDiv = document.querySelector(CONFIG.UI.statusDiv);
+    if (statusDiv) {
+        statusDiv.textContent = status;
+    }
+}

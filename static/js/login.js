@@ -134,6 +134,8 @@ async function login(email, password) {
         logger.info('Login response ' + data);
         
         if (response.ok) {
+            const audio = new Audio('/static/media/login.mp3');
+            audio.play();
             // Store tokens
             localStorage.setItem('access_token', data.access_token);
             localStorage.setItem('refresh_token', data.refresh_token);
@@ -145,7 +147,9 @@ async function login(email, password) {
             
             logger.info('Current URL: ' + window.location.href);
             // Redirect to main app
-            window.location.href = '/static/home.html';
+            setTimeout(() => {
+                window.location.href = '/static/home.html';
+            }, 3000);
 
             logger.info('New URL:' + window.location.href);
         } else {

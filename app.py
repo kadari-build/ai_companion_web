@@ -120,31 +120,6 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-# Whisper transcription function
-# Commenting out for now as it is not needed for the web socket connection
-# async def whisper_transcribe(audio_data: bytes) -> str:
-#     """Transcribe audio data using Whisper"""
-#     try:
-#         # Load the Whisper model (you might want to cache this)
-#         model = whisper.load_model("base")
-        
-#         # Save audio data to a temporary file
-#         temp_file = "temp_audio.wav"
-#         with open(temp_file, "wb") as f:
-#             f.write(audio_data)
-        
-#         # Transcribe the audio
-#         result = model.transcribe(temp_file)
-        
-#         # Clean up temporary file
-#         if os.path.exists(temp_file):
-#             os.remove(temp_file)
-        
-#         return result["text"]
-#     except Exception as e:
-#         logger.error(f"Error transcribing audio: {e}")
-#         return "Sorry, I couldn't understand that audio."
-
 # Text-to-speech function
 async def text_to_speech(text: str) -> str:
     """Convert text to speech and return base64 encoded audio"""
