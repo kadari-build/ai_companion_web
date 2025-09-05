@@ -1,4 +1,5 @@
 # AI Companion Web
+<img width="2554" height="1263" alt="AI Companion Demo" src="https://github.com/user-attachments/assets/2dd70112-3675-4bcf-80d8-2553b5fdd785" />
 
 A sophisticated web-based AI conversation companion with advanced voice capabilities, authentication, and real-time communication.
 
@@ -6,12 +7,14 @@ A sophisticated web-based AI conversation companion with advanced voice capabili
 
 ### Core Functionality
 - **AI-powered conversation companion** with multi-model support (OpenAI, Anthropic, Google)
-- **Voice login and interaction** with speech recognition and text-to-speech
+- **Voice interaction** with speech recognition and text-to-speech
 - **JWT-based authentication** with refresh tokens
 - **Real-time WebSocket communication** for instant responses
 - **Database integration** with PostgreSQL for user management and conversation history
 - **LangChain integration** for advanced AI workflows
-- **Gmail integration** for email processing capabilities
+- **Gmail integration Hooks** for email processing capabilities
+
+<img width="2554" height="1263" alt="AI Companion Demo" src="https://github.com/user-attachments/assets/d96ff71d-2b83-4ae2-bf7a-674891d98444" />
 
 ### Technical Features
 - **FastAPI backend** with async support
@@ -19,8 +22,7 @@ A sophisticated web-based AI conversation companion with advanced voice capabili
 - **CORS configuration** for cross-origin requests
 - **Environment-based configuration** with secure credential management
 - **Modular architecture** with separate authentication and API modules
-- **Voice processing** with Whisper for speech recognition
-- **Text-to-speech** with gTTS and pyttsx3
+- **Text-to-speech** with gTTS
 
 ### User Interface Features
 - **🎨 Modern HUD-style settings overlays** with glassmorphism design
@@ -70,36 +72,6 @@ cp env.example .env
 
 # Edit the .env file with your actual values
 # Use your preferred text editor
-```
-
-**Option B: Create from scratch**
-Create a `.env` file in the root directory with the following variables:
-
-```env
-# Database Configuration
-DATABASE_URL=postgresql://username:password@localhost:5432/ai_companion_db
-DATABASE_PW=your_database_password_here
-DATABASE_USER=your_database_username
-DATABASE_NAME=ai_companion_db
-DATABASE_HOST=localhost
-DATABASE_PORT=5432
-
-# Security
-SECRET_KEY=your_super_secret_key_here_make_it_at_least_32_characters_long
-
-# Server Configuration
-HOST=localhost
-PORT=7777
-LOCAL_URL_SSL=https://localhost:7777
-LOCAL_URL=http://localhost:7777
-LOCAL_IP=127.0.0.1
-
-# CORS Configuration
-CORS_ORIGINS=https://localhost:7777,http://localhost:7777
-
-# JWT Configuration
-ACCESS_TOKEN_EXPIRE_MINUTES=30
-REFRESH_TOKEN_EXPIRE_DAYS=3
 ```
 
 ### 5. Generate a Strong Secret Key
@@ -171,28 +143,6 @@ The settings overlays feature a beautiful glassmorphism design that:
 - **📱 Responsive design** optimized for all devices
 - **✨ Smooth animations** with elegant transitions
 
-### 🎛️ Three Settings Overlays
-
-#### 1. **General Settings** (⚙️)
-- **User Profile**: Display name, email, account information
-- **Audio Settings**: Volume, speech speed, echo cancellation
-- **Theme Settings**: Light, Dark, Auto theme options
-- **Accessibility**: Screen reader support, keyboard navigation
-- **Voice Commands Help**: Available voice commands reference
-
-#### 2. **Agent Settings** (🤖)
-- **Agent Personality**: Friendly, Professional, Casual, Creative
-- **Response Length**: Short, Medium, Long configurations
-- **Conversation Style**: Formal, Informal, Technical, Creative
-- **Response Preferences**: Detailed, Concise, Balanced
-
-#### 3. **User Settings** (👤)
-- **User Profile**: Personal information and preferences
-- **Audio Preferences**: Volume, speech settings, audio quality
-- **Theme Customization**: Theme selection and appearance
-- **Accessibility Options**: Screen reader, keyboard shortcuts
-- **Privacy Settings**: Data handling and sharing preferences
-
 ### 🎤 Voice Commands
 
 The settings system supports comprehensive voice control:
@@ -216,21 +166,6 @@ The architecture supports direct setting modification:
 - `"Change theme to dark"`
 - `"Increase volume to 80%"`
 - `"Enable noise suppression"`
-
-### 🏗️ Technical Architecture
-
-#### Centralized Management
-- **SettingsManager**: Single coordinator for all overlays
-- **Context-aware routing**: Knows which overlay is currently open
-- **Conflict-free voice commands**: No handler conflicts
-- **Automatic overlay management**: Closes previous when opening new
-
-#### Key Features
-- **💾 Persistent storage**: Settings saved to localStorage
-- **🎯 Dependency injection**: Clean module initialization
-- **🎙️ Event-driven**: Uses event listeners instead of onclick
-- **♿ Accessibility**: ARIA labels and keyboard navigation
-- **📱 Responsive**: Mobile-first design approach
 
 ### 🧪 Testing
 
@@ -290,53 +225,7 @@ Configure your API keys in the respective environment variables.
 python app.py
 ```
 
-### Production Considerations
-1. **Use a production WSGI server** (Gunicorn, uvicorn)
-2. **Set up reverse proxy** (Nginx, Apache)
-3. **Configure SSL/TLS certificates**
-4. **Use environment-specific database credentials**
-5. **Set up proper logging and monitoring**
-6. **Configure backup strategies**
-
-## 📚 Documentation
-
-- [Authentication Guide](AUTHENTICATION_README.md) - Detailed authentication setup
-- [Voice Login Guide](VOICE_LOGIN_README.md) - Voice interaction features
-- [App Flow Diagram](APP_FLOW_DIAGRAM.md) - Application architecture
-- [Settings Overlay System](SETTINGS_OVERLAY_README.md) - Modern HUD-style settings management
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
 
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🆘 Support
-
-For support and questions:
-- Check the documentation files
-- Review the app flow diagram
-- Examine the authentication and voice login guides
-- Create an issue in the repository
-
-## 🔄 Version History
-
-- **v1.1.0** - Settings Overlay System
-  - Modern HUD-style settings overlays with glassmorphism design
-  - Centralized SettingsManager with three specialized overlays
-  - Voice-controlled settings with context-aware command routing
-  - Responsive design optimized for all devices
-  - Persistent settings storage with localStorage
-  - Comprehensive voice command support
-
-- **v1.0.0** - Initial release with core AI companion functionality
-  - Voice login and authentication
-  - Real-time WebSocket communication
-  - Database integration
-  - Multi-model AI support
