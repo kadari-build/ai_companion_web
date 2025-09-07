@@ -1,20 +1,36 @@
 # AI Companion Web
-<img width="2554" height="1263" alt="AI Companion Demo" src="https://github.com/user-attachments/assets/2dd70112-3675-4bcf-80d8-2553b5fdd785" />
 
 A sophisticated web-based AI conversation companion with advanced voice capabilities, authentication, and real-time communication.
 
+<img width="2554" height="1263" alt="AI Companion Demo" src="https://github.com/user-attachments/assets/2dd70112-3675-4bcf-80d8-2553b5fdd785" />
+
+## ✨ Problem
+Editing video content can be a daunting task. Video editing represents 70-80% of content creation time, with creators manually reviewing hours of footage to identify 2-3 minutes of highlight-worthy moments. This process is both time-intensive and inconsistent, often missing great content buried in long recordings
+
+## 🚀 What It Does
+
+- **🎤 Voice-controlled settings** with context-aware command routing
+- **♿ Accessibility features** with keyboard navigation and screen reader support
+
+https://github.com/user-attachments/assets/d93b30d4-017c-4f06-aeb0-7443333e74e0
+
 ## 🚀 Features
 
-### Core Functionality
 - **AI-powered conversation companion** with multi-model support (OpenAI, Anthropic, Google)
 - **Voice interaction** with speech recognition and text-to-speech
 - **JWT-based authentication** with refresh tokens
 - **Real-time WebSocket communication** for instant responses
 - **Database integration** with PostgreSQL for user management and conversation history
-- **LangChain integration** for advanced AI workflows
+- **LangChain/LangGraph integration** for advanced AI workflows
 - **Gmail integration Hooks** for email processing capabilities
 
-https://github.com/user-attachments/assets/d93b30d4-017c-4f06-aeb0-7443333e74e0
+## ✨ Challenges
+- Voice controlled user login, registration, and credentnal management coupled with keyboard navigation and screen reader support
+- Seamless natural conversation: Automatically merging overlapping or adjacent exciting moments while preserving peak intensity and avoiding redundancy
+- LLM app control: Creating cohesive content by combining highlights from multiple source videos with engaging sequencing, proper flow and transitions
+- Precise editing: Achieving frame-accurate cuts and seamless transitions between automated edit point cuts
+- Cost-efficient LLM analysis: Implementing scalable video/audio analysis using LLM models
+
 
 ### Technical Features
 - **FastAPI backend** with async support
@@ -23,14 +39,6 @@ https://github.com/user-attachments/assets/d93b30d4-017c-4f06-aeb0-7443333e74e0
 - **Environment-based configuration** with secure credential management
 - **Modular architecture** with separate authentication and API modules
 - **Text-to-speech** with gTTS
-
-### User Interface Features
-- **🎨 Modern HUD-style settings overlays** with glassmorphism design
-- **🎛️ Centralized settings management** with three specialized overlays
-- **🎤 Voice-controlled settings** with context-aware command routing
-- **📱 Responsive design** optimized for desktop, tablet, and mobile
-- **♿ Accessibility features** with keyboard navigation and screen reader support
-- **🎯 Non-intrusive UI** that doesn't dominate the screen
 
 ## 📋 Prerequisites
 
