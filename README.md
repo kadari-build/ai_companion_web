@@ -1,6 +1,6 @@
-# AI Companion Web
+# Conversational AI Companion
 
-A sophisticated web-based AI conversation companion with advanced voice capabilities, authentication, and real-time communication.
+AI companion web application with voice capabilities, user authentication, and real-time communication.
 
 <img width="2554" height="1263" alt="AI Companion Demo" src="https://github.com/user-attachments/assets/2dd70112-3675-4bcf-80d8-2553b5fdd785" />
 
