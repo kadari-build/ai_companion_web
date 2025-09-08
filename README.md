@@ -4,13 +4,13 @@ AI companion web application with voice capabilities, user authentication, and r
 
 <img width="2554" height="1263" alt="AI Companion Demo" src="https://github.com/user-attachments/assets/2dd70112-3675-4bcf-80d8-2553b5fdd785" />
 
-## ✨ Problem
+## Problem
 AI has proven transformative across many domains, but accessing this technology remains challenging for users who require accessible interfaces. Current AI tools often rely heavily on visual elements, complex navigation, and mobile app components that create significant barriers for visually impaired users. Existing accessibility features are typically retrofitted rather than designed as core interaction models.
 
-## ✨ Goal
+## Goal
 AI Companion addresses this gap by designing voice and conversation as the primary interface from the ground up. Rather than adding accessibility as an afterthought, the application leverages natural speech, audio cues, and conversational commands as the main navigation method, with traditional accessibility support as reinforcement rather than the sole solution
 
-## 🚀 What It Does
+## What It Does
 
 - Provides user registration and login with full accessibility support
 - Enables real-time voice conversations with AI models (OpenAI, Anthropic, Google)
@@ -20,7 +20,7 @@ AI Companion addresses this gap by designing voice and conversation as the prima
 
 https://github.com/user-attachments/assets/d93b30d4-017c-4f06-aeb0-7443333e74e0
 
-## 🚀 Features
+## Features
 
 - **Conversational AI companion** with multi-model support (OpenAI, Anthropic, Google)
 - **Voice interaction** with speech recognition and text-to-speech
@@ -30,7 +30,7 @@ https://github.com/user-attachments/assets/d93b30d4-017c-4f06-aeb0-7443333e74e0
 - **LangChain/LangGraph integration** for advanced AI workflows
 - **Gmail integration Hooks** for email processing capabilities
 
-## ✨ Challenges
+## Challenges
 - **Accessible authentication flow:** Implementing a secure voice-controlled login/registration while maintaining full keyboard navigation and screen reader compatibility
 - **LLM-driven app control:** AI management of conversational input and system commands (opening settings, navigating menus) based on natural voice requests
 - **Conversation management:** Automatically summarizing long conversation histories to maintain context while staying within token limits and preserving important details
@@ -46,14 +46,14 @@ https://github.com/user-attachments/assets/d93b30d4-017c-4f06-aeb0-7443333e74e0
 - **Modular architecture** with separate authentication and API modules
 - **Text-to-speech** with gTTS
 
-## 📋 Prerequisites
+## Prerequisites
 
 - **Python 3.8+**
 - **PostgreSQL database**
 - **Git** for version control
 - **Required Python packages** (see `requirements.txt`)
 
-## 🛠️ Installation & Setup
+## Installation & Setup
 
 ### 1. Clone the Repository
 ```bash
@@ -104,45 +104,6 @@ python app.py
 ```
 
 The application will be available at `http://localhost:7777`
-
-## 🏗️ Project Structure
-
-```
-ai_companion_web/
-├── app.py                 # Main FastAPI application
-├── config.py             # Configuration settings
-├── database.py           # Database connection and setup
-├── models.py             # SQLAlchemy models
-├── schemas.py            # Pydantic schemas
-├── auth.py               # Authentication utilities
-├── auth_api.py           # Authentication API endpoints
-├── auth_middleware.py    # Authentication middleware
-├── protected_api.py      # Protected API endpoints
-├── companion.py          # AI companion logic
-├── companions.py         # Companion management
-├── setup_db.py           # Database initialization
-├── requirements.txt      # Python dependencies
-├── .env.example          # Environment variables template
-├── .gitignore           # Git ignore rules
-├── static/              # Frontend assets
-│   ├── js/             # JavaScript modules
-│   │   ├── modules/    # Modular JavaScript components
-│   │   │   ├── SettingsManager.js      # Centralized settings coordinator
-│   │   │   ├── SettingsOverlay.js      # General settings overlay
-│   │   │   ├── AgentSettingsOverlay.js # Agent-specific settings
-│   │   │   ├── UserSettingsOverlay.js  # User-specific settings
-│   │   │   └── SpeechRecognition.js    # Voice command handling
-│   │   └── app.js       # Main application logic
-│   ├── home.html       # Main application page
-│   ├── login.html      # Login page
-│   ├── companion.css   # Stylesheets with HUD design
-│   └── settings-test.html # Settings testing page
-└── docs/               # Documentation
-    ├── AUTHENTICATION_README.md
-    ├── VOICE_LOGIN_README.md
-    ├── APP_FLOW_DIAGRAM.md
-    └── SETTINGS_OVERLAY_README.md
-```
 
 ## 📄 License
 
