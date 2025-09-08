@@ -9,8 +9,11 @@ Editing video content can be a daunting task. Video editing represents 70-80% of
 
 ## 🚀 What It Does
 
+- ** Access8ble Login/Registration: User can register and create an account with keyboard navigation and screen reader support
+- ** Real-time voice conversation with LLM
+- Conversation threads are isolated by user account
+- LLM can search the internet for information that it cannot handle on its own
 - **🎤 Voice-controlled settings** with context-aware command routing
-- **♿ Accessibility features** with keyboard navigation and screen reader support
 
 https://github.com/user-attachments/assets/d93b30d4-017c-4f06-aeb0-7443333e74e0
 
